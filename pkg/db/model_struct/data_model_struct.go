@@ -419,7 +419,6 @@ type LocalConversation struct {
 	HasReadSeq            int64  `gorm:"column:has_read_seq" json:"hasReadSeq"`
 	MsgDestructTime       int64  `gorm:"column:msg_destruct_time;default:604800" json:"msgDestructTime"`
 	IsMsgDestruct         bool   `gorm:"column:is_msg_destruct;default:false" json:"isMsgDestruct"`
-	ConversationState     int32  `gorm:"column:conversation_state;default:99" json:"conversationState"`
 }
 type LocalConversationUnreadMessage struct {
 	ConversationID string `gorm:"column:conversation_id;primary_key;type:char(128)" json:"conversationID"`
