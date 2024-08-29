@@ -105,9 +105,19 @@ func (c *Conversation) markConversationMessageAsRead(ctx context.Context, conver
 			log.ZWarn(ctx, "MarkConversationMessageAsRead err", err, "conversationID", conversationID, "msgIDs", msgIDs)
 		}
 	case constant.SuperGroupChatType, constant.NotificationChatType:
+		msgs, err := c.db.GetUnreadMessage(ctx, conversationID)
+		if err != nil {
+			return err
+		}
+		log.ZDebug(ctx, "get unread message", "msgs", len(msgs))
+		msgIDs, _ := c.getAsReadMsgMapAndList(ctx, msgs)
 		log.ZDebug(ctx, "markConversationMessageAsRead", "conversationID", conversationID, "peerUserMaxSeq", peerUserMaxSeq, "maxSeq", maxSeq)
 		if err := c.markConversationAsReadSvr(ctx, conversationID, maxSeq, nil); err != nil {
 			return err
+		}
+		_, err = c.db.MarkConversationMessageAsReadDB(ctx, conversationID, msgIDs)
+		if err != nil {
+			log.ZWarn(ctx, "MarkConversationMessageAsRead err", err, "conversationID", conversationID, "msgIDs", msgIDs)
 		}
 	}
 
@@ -274,26 +284,35 @@ func (c *Conversation) doReadDrawing(ctx context.Context, msg *sdkws.MsgData) {
 			var messageReceiptResp = []*sdk_struct.MessageReceipt{{UserID: tips.MarkAsReadUserID, MsgIDList: successMsgIDs,
 				SessionType: conversation.ConversationType, ReadTime: msg.SendTime}}
 			c.msgListener().OnRecvC2CReadReceipt(utils.StructToJsonString(messageReceiptResp))
+		} else if conversation.ConversationType == constant.SuperGroupChatType {
+			latestMsg := &sdk_struct.MsgStruct{}
+			if err := json.Unmarshal([]byte(conversation.LatestMsg), latestMsg); err != nil {
+				log.ZError(ctx, "Unmarshal err", err, "conversationID", tips.ConversationID, "latestMsg", conversation.LatestMsg)
+			}
+			var successMsgIDs []string
+			for _, message := range messages {
+				attachInfo := sdk_struct.AttachedInfoElem{}
+				_ = utils.JsonStringToStruct(message.AttachedInfo, &attachInfo)
+				attachInfo.HasReadTime = msg.SendTime
+				//attachInfo.GroupHasReadInfo.HasReadUserIDList = utils.RemoveRepeatedStringInList(append(attachInfo.GroupHasReadInfo.HasReadUserIDList, tips.MarkAsReadUserID))
+				//attachInfo.GroupHasReadInfo.HasReadCount = int32(len(attachInfo.GroupHasReadInfo.HasReadUserIDList))
+				message.AttachedInfo = utils.StructToJsonString(attachInfo)
+				if err = c.db.UpdateMessage(ctx, tips.ConversationID, message); err != nil {
+					log.ZError(ctx, "UpdateMessage err", err, "conversationID", tips.ConversationID, "message", message)
+				} else {
+					if latestMsg.ClientMsgID == message.ClientMsgID {
+						latestMsg.IsRead = message.IsRead
+						conversation.LatestMsg = utils.StructToJsonString(latestMsg)
+						_ = common.TriggerCmdUpdateConversation(ctx, common.UpdateConNode{ConID: conversation.ConversationID, Action: constant.AddConOrUpLatMsg, Args: *conversation}, c.GetCh())
+
+					}
+					successMsgIDs = append(successMsgIDs, message.ClientMsgID)
+				}
+			}
+			var messageReceiptResp = []*sdk_struct.MessageReceipt{{GroupID: conversation.GroupID, MsgIDList: successMsgIDs,
+				SessionType: conversation.ConversationType, ReadTime: msg.SendTime}}
+			c.msgListener().OnRecvGroupReadReceipt(utils.StructToJsonString(messageReceiptResp))
 		}
-		//else if conversation.ConversationType == constant.SuperGroupChatType {
-		//	var successMsgIDs []string
-		//	for _, message := range messages {
-		//		attachInfo := sdk_struct.AttachedInfoElem{}
-		//		_ = utils.JsonStringToStruct(message.AttachedInfo, &attachInfo)
-		//		attachInfo.HasReadTime = msg.SendTime
-		//		attachInfo.GroupHasReadInfo.HasReadUserIDList = utils.RemoveRepeatedStringInList(append(attachInfo.GroupHasReadInfo.HasReadUserIDList, tips.MarkAsReadUserID))
-		//		attachInfo.GroupHasReadInfo.HasReadCount = int32(len(attachInfo.GroupHasReadInfo.HasReadUserIDList))
-		//		message.AttachedInfo = utils.StructToJsonString(attachInfo)
-		//		if err = c.db.UpdateMessage(ctx, tips.ConversationID, message); err != nil {
-		//			log.ZError(ctx, "UpdateMessage err", err, "conversationID", tips.ConversationID, "message", message)
-		//		} else {
-		//			successMsgIDs = append(successMsgIDs, message.ClientMsgID)
-		//		}
-		//	}
-		//	var messageReceiptResp = []*sdk_struct.MessageReceipt{{GroupID: conversation.GroupID, MsgIDList: successMsgIDs,
-		//		SessionType: conversation.ConversationType, ReadTime: msg.SendTime}}
-		//	c.msgListener.OnRecvGroupReadReceipt(utils.StructToJsonString(messageReceiptResp))
-		//}
 	} else {
 		c.doUnreadCount(ctx, conversation, tips.HasReadSeq, tips.Seqs)
 	}
