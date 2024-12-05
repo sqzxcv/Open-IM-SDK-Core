@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/OpenIMSDK/protocol/third"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/ccontext"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
@@ -101,7 +102,9 @@ type LongConnMgr struct {
 	mutex        sync.Mutex
 	IsBackground bool
 	// write conn lock
-	connWrite *sync.Mutex
+	connWrite         *sync.Mutex
+	heartBeatFailures int
+	cancelHeartbeat   context.CancelFunc // 取消心跳的函数
 }
 
 type Message struct {
@@ -125,7 +128,8 @@ func (c *LongConnMgr) Run(ctx context.Context) {
 	//fmt.Println(mcontext.GetOperationID(ctx), "login run", string(debug.Stack()))
 	go c.readPump(ctx)
 	go c.writePump(ctx)
-	go c.heartbeat(ctx)
+	//go c.heartbeat(ctx)
+	go c.ping(ctx)
 }
 
 func (c *LongConnMgr) SendReqWaitResp(ctx context.Context, m proto.Message, reqIdentifier int, resp proto.Message) error {
@@ -275,17 +279,17 @@ func (c *LongConnMgr) writePump(ctx context.Context) {
 	}
 }
 
-func (c *LongConnMgr) heartbeat(ctx context.Context) {
-	log.ZDebug(ctx, "heartbeat start", "goroutine ID:", getGoroutineID())
+func (c *LongConnMgr) ping(ctx context.Context) {
+	log.ZDebug(ctx, "ping start", "goroutine ID:", getGoroutineID())
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		log.ZWarn(c.ctx, "heartbeat closed", nil, "heartbeat", "heartbeat done sdk logout.....")
+		log.ZWarn(c.ctx, "ping closed", nil, "ping", "ping done sdk logout.....")
 	}()
 	for {
 		select {
 		case <-ctx.Done():
-			log.ZInfo(ctx, "heartbeat done sdk logout.....")
+			log.ZInfo(ctx, "ping done sdk logout.....")
 			return
 		case <-c.heartbeatCh:
 			c.sendPingToServer(ctx)
@@ -311,6 +315,59 @@ func (c *LongConnMgr) sendPingMessage(ctx context.Context) {
 	}
 
 }
+
+func (c *LongConnMgr) StartHeartbeat(ctx context.Context) {
+	// 在启动新的心跳任务之前取消前一个心跳任务
+	if c.cancelHeartbeat != nil {
+		c.cancelHeartbeat() // 取消之前的心跳
+	}
+
+	// 创建新的可取消的心跳上下文
+	var heartbeatCtx context.Context
+	heartbeatCtx, c.cancelHeartbeat = context.WithCancel(ctx)
+
+	// 启动一个新的协程来执行心跳任务
+	go func() {
+		defer c.cancelHeartbeat() // 确保心跳结束时调用 cancel
+
+		t := 1 * time.Second // 初始心跳间隔为1秒,立刻发送第一个心跳
+		for {
+			select {
+			case <-heartbeatCtx.Done():
+				log.ZInfo(ctx, "Heartbeat stopped.")
+				return // 当心跳上下文被取消时，停止心跳
+			case <-time.After(t):
+
+				if err := c.sendHeartbeatMessage(ctx); err == nil {
+					c.heartBeatFailures = 0
+					t = 10 * time.Second
+				} else {
+					c.heartBeatFailures++
+					if c.heartBeatFailures >= 5 {
+						_ = c.close()
+						c.listener.OnConnectFailed(sdkerrs.NetworkError, err.Error())
+						return // 如果连接已关闭，无需继续心跳
+					}
+					t = 100 * time.Millisecond
+				}
+			}
+		}
+	}()
+}
+
+func (c *LongConnMgr) sendHeartbeatMessage(ctx context.Context) error {
+
+	// 心跳命令5001, 为空包, 暂时用PartSizeReq替代
+	req := third.PartSizeReq{}
+	err := c.SendReqWaitResp(ctx, &req, constant.WsHeartbeat, &req)
+	if err != nil {
+		log.ZError(ctx, "sendHeartbeatMessage failed", err)
+		return err
+	}
+	log.ZInfo(ctx, "sendHeartbeatMessage success")
+	return nil
+}
+
 func getGoroutineID() int64 {
 	buf := make([]byte, 64)
 	buf = buf[:runtime.Stack(buf, false)]
@@ -387,7 +444,11 @@ func (c *LongConnMgr) writeBinaryMsgAndRetry(msg *GeneralWsReq) (chan *GeneralWs
 	if c.GetConnectionStatus() != Connected && msg.ReqIdentifier == constant.GetNewestSeq {
 		return tempChan, sdkerrs.ErrNetwork.Wrap("connection closed,conning...")
 	}
-	for i := 0; i < maxReconnectAttempts; i++ {
+	maxRetryCount := maxReconnectAttempts
+	if msg.ReqIdentifier == constant.WsHeartbeat {
+		maxRetryCount = 1
+	}
+	for i := 0; i < maxRetryCount; i++ {
 		err := c.writeBinaryMsg(*msg)
 		if err != nil {
 			log.ZError(c.ctx, "send binary message error", err, "message", msg)
@@ -474,6 +535,8 @@ func (c *LongConnMgr) handleMessage(message []byte) error {
 	case constant.SendMsg:
 		fallthrough
 	case constant.SendSignalMsg:
+		fallthrough
+	case constant.WsHeartbeat:
 		fallthrough
 	case constant.SetBackgroundStatus:
 		if err := c.Syncer.NotifyResp(ctx, wsResp); err != nil {
@@ -564,6 +627,7 @@ func (c *LongConnMgr) reConn(ctx context.Context, num *int) (needRecon bool, err
 	*num++
 	log.ZInfo(c.ctx, "long conn establish success", "localAddr", c.conn.LocalAddr(), "connNum", *num)
 	c.reconnectStrategy.Reset()
+	go c.StartHeartbeat(ctx)
 	_ = common.TriggerCmdConnected(ctx, c.pushMsgAndMaxSeqCh)
 	return true, nil
 }

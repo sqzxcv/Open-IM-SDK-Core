@@ -302,6 +302,7 @@ const (
 	SetBackgroundStatus = 2004
 
 	WSDataError = 3001
+	WsHeartbeat = 5001
 )
 
 // conversation

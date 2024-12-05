@@ -290,15 +290,17 @@ func (m *MsgSyncer) syncAndTriggerMsgs(ctx context.Context, seqMap map[string][2
 			}
 		}
 
-		resp, err := m.pullMsgBySeqRange(ctx, tempSeqMap, syncMsgNum)
-		if err != nil {
-			log.ZError(ctx, "syncMsgFromSvr err", err, "seqMap", seqMap)
-			return err
-		}
-		_ = m.triggerConversation(ctx, resp.Msgs)
-		_ = m.triggerNotification(ctx, resp.NotificationMsgs)
-		for conversationID, seqs := range seqMap {
-			m.syncedMaxSeqs[conversationID] = seqs[1]
+		if len(tempSeqMap) > 0 {
+			resp, err := m.pullMsgBySeqRange(ctx, tempSeqMap, syncMsgNum)
+			if err != nil {
+				log.ZError(ctx, "syncMsgFromSvr err", err, "seqMap", seqMap)
+				return err
+			}
+			_ = m.triggerConversation(ctx, resp.Msgs)
+			_ = m.triggerNotification(ctx, resp.NotificationMsgs)
+			for conversationID, seqs := range seqMap {
+				m.syncedMaxSeqs[conversationID] = seqs[1]
+			}
 		}
 	} else {
 		log.ZDebug(ctx, "noting conversation to sync", "syncMsgNum", syncMsgNum)

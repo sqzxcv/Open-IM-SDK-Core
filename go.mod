@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	google.golang.org/protobuf v1.31.0 // indirect
 	gorm.io/driver/sqlite v1.3.6
-	nhooyr.io/websocket v1.8.10
+
 )
 
 require golang.org/x/net v0.19.0
@@ -26,6 +26,7 @@ require (
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0 // indirect
+	github.com/coder/websocket v1.8.12 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/lestrrat-go/strftime v1.0.6 // indirect
@@ -39,3 +40,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230717213848-3f92550aa753 // indirect
 	google.golang.org/grpc v1.56.2 // indirect
 )
+
+//replace github.com/coder/websocket => /Users/shengqiang/Documents/Codes/wasm-websocket

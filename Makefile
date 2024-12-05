@@ -101,7 +101,7 @@ endif
 
 # Copy githook scripts when execute makefile
 # TODO! GIT_FILE_SIZE_LIMIT=42000000 git commit -m "This commit is allowed file sizes up to 42MB"
-COPY_GITHOOK:=$(shell cp -f scripts/githooks/* .git/hooks/; chmod +x .git/hooks/*)
+#COPY_GITHOOK:=$(shell cp -f scripts/githooks/* .git/hooks/; chmod +x .git/hooks/*)
 
 # Linux command settings
 FIND := find . ! -path './image/*' ! -path './vendor/*' ! -path './bin/*'
@@ -277,8 +277,8 @@ lint: tools.verify.golangci-lint
 
 ## test: Run unit test
 .PHONY: test
-test: 
-	@$(GO) test ./... 
+test:
+	@$(GO) test ./...
 
 ## cover: Run unit test with coverage.
 .PHONY: cover
@@ -326,11 +326,11 @@ clean:
 help: Makefile
 	@printf "\n\033[1mUsage: make <TARGETS> ...\033[0m\n\n\\033[1mTargets:\\033[0m\n\n"
 	@sed -n 's/^##//p' $< | awk -F':' '{printf "\033[36m%-28s\033[0m %s\n", $$1, $$2}' | sed -e 's/^/ /'
-	
+
 ######################################=> common tools<= ############################################
 # tools
 
-BUILD_TOOLS ?= go-gitlint golangci-lint goimports addlicense deepcopy-gen conversion-gen ginkgo go-junit-report 
+BUILD_TOOLS ?= go-gitlint golangci-lint goimports addlicense deepcopy-gen conversion-gen ginkgo go-junit-report
 
 ## tools.verify.%: Check if a tool is installed and install it
 .PHONY: tools.verify.%

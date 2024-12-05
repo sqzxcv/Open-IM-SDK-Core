@@ -23,10 +23,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/OpenIMSDK/tools/log"
+	"github.com/coder/websocket"
 	"io"
 	"net/http"
 	"net/url"
-	"nhooyr.io/websocket"
 	"time"
 )
 
