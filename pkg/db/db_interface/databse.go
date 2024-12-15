@@ -69,6 +69,11 @@ type GroupModel interface {
 	UpdateGroupMemberField(ctx context.Context, groupID, userID string, args map[string]interface{}) error
 	GetGroupMemberInfoIfOwnerOrAdmin(ctx context.Context) ([]*model_struct.LocalGroupMember, error)
 	SearchGroupMembersDB(ctx context.Context, keyword string, groupID string, isSearchMemberNickname, isSearchUserID bool, offset, count int) (result []*model_struct.LocalGroupMember, err error)
+	// group 群组同步时获取最近同步时间, 用于做增量同步
+	GetGroupSyncLastedUpdateTime(ctx context.Context) (int64, error)
+	SetGroupSyncLastedUpdateTime(ctx context.Context, lastUpdateTime int64) error
+	SetCustomParams(ctx context.Context, key string, value any) error
+	GetCustomParams(ctx context.Context, key string, ) (int64, error)
 }
 
 type MessageModel interface {

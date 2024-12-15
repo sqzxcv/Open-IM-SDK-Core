@@ -22,6 +22,9 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/wasm/exec"
+	"github.com/openimsdk/tools/log"
+	"strconv"
+	"strings"
 )
 
 type LocalGroups struct{}
@@ -152,6 +155,43 @@ func (i *LocalGroups) GetGroupMemberAllGroupIDs(ctx context.Context) (result []s
 			return result, err
 		} else {
 			return nil, exec.ErrType
+		}
+	}
+}
+
+func (i *LocalGroups) GetGroupSyncLastedUpdateTime(ctx context.Context) (int64, error) {
+	return i.GetCustomParams(ctx, "GroupSyncLastedUpdateTime")
+}
+func (i *LocalGroups) SetGroupSyncLastedUpdateTime(ctx context.Context, lastUpdateTime int64) error {
+	err := i.SetCustomParams(ctx, "GroupSyncLastedUpdateTime", lastUpdateTime)
+	return err
+}
+
+func (i *LocalGroups) SetCustomParams(ctx context.Context, key string, value any) error {
+
+	_, err := exec.Exec(key, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *LocalGroups) GetCustomParams(ctx context.Context, key string, ) (int64, error) {
+
+	value, err := exec.Exec(key)
+	if err != nil {
+		return 0, err
+	} else {
+		log.ZInfo(ctx, "getCustomParams", value)
+		if v1, ok := value.(string); ok {
+			if strings.TrimSpace(v1) == "" {
+				return 0, nil
+			}
+			numb, err := strconv.ParseInt(v1, 10, 64)
+			return numb, err
+		} else {
+
+			return 0, exec.ErrType
 		}
 	}
 }

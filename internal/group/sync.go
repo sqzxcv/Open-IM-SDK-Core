@@ -20,14 +20,14 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"github.com/OpenIMSDK/protocol/group"
-	"github.com/OpenIMSDK/protocol/sdkws"
-	"github.com/OpenIMSDK/tools/log"
-	utils2 "github.com/OpenIMSDK/tools/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/util"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
+	"github.com/openimsdk/protocol/group"
+	"github.com/openimsdk/protocol/sdkws"
+	"github.com/openimsdk/tools/log"
+	utils2 "github.com/openimsdk/tools/utils"
 	"sync"
 )
 
@@ -67,6 +67,23 @@ func (g *Group) SyncAllGroupMember(ctx context.Context, groupID string) error {
 	if err != nil {
 		return err
 	}
+	localData, err := g.db.GetGroupMemberListSplit(ctx, groupID, 0, 0, 9999999)
+	if err != nil {
+		return err
+	}
+	hashCode := g.getGroupHash(localData)
+	if len(localData) == int(absInfo.GroupMemberNumber) && hashCode == absInfo.GroupMemberListHash {
+		log.ZDebug(ctx, "SyncAllGroupMember no change in personnel", "groupID", groupID, "hashCode", hashCode, "absInfo.GroupMemberListHash", absInfo.GroupMemberListHash)
+		return nil
+	}
+	members, err := g.GetServerGroupMembers(ctx, groupID)
+	if err != nil {
+		return err
+	}
+	return g.syncGroupMembers(ctx, groupID, members, localData)
+}
+
+func (g *Group) SyncAllGroupMembers(ctx context.Context, groupID string, absInfo *group.GroupAbstractInfo) error {
 	localData, err := g.db.GetGroupMemberListSplit(ctx, groupID, 0, 0, 9999999)
 	if err != nil {
 		return err
@@ -166,7 +183,7 @@ func (g *Group) deleteGroup(ctx context.Context, groupID string) error {
 }
 
 func (g *Group) SyncAllJoinedGroupsAndMembers(ctx context.Context) error {
-	_, err := g.syncAllJoinedGroups(ctx)
+	_, err := g.syncAllJoinedGroupsWithIncrement(ctx)
 	if err != nil {
 		return err
 	}
@@ -174,21 +191,29 @@ func (g *Group) SyncAllJoinedGroupsAndMembers(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	groupids := utils2.Slice(groups, func(group *model_struct.LocalGroup) string {
+		return group.GroupID
+	})
+	abs, err := g.GetGroupAbstractInfos(ctx, groupids)
+	if err != nil {
+		return err
+	}
 	var wg sync.WaitGroup
-	for _, group := range groups {
+	for _, absInfo := range abs {
 		wg.Add(1)
 		go func(groupID string) {
 			defer wg.Done()
-			if err := g.SyncAllGroupMember(ctx, groupID); err != nil {
+			if err := g.SyncAllGroupMembers(ctx, groupID, absInfo); err != nil {
 				log.ZError(ctx, "SyncGroupMember failed", err)
 			}
-		}(group.GroupID)
+		}(absInfo.GroupID)
 	}
 	wg.Wait()
 	return nil
 }
-func (g *Group) syncAllJoinedGroups(ctx context.Context) ([]*sdkws.GroupInfo, error) {
-	groups, err := g.GetServerJoinGroup(ctx)
+func (g *Group) syncAllJoinedGroupsWithIncrement(ctx context.Context) ([]*sdkws.GroupInfo, error) {
+	groups, err := g.GetServerJoinGroupWithIncrement(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +265,22 @@ func (g *Group) SyncAdminGroupApplications(ctx context.Context, groupIDs ...stri
 
 func (g *Group) GetServerJoinGroup(ctx context.Context) ([]*sdkws.GroupInfo, error) {
 	fn := func(resp *group.GetJoinedGroupListResp) []*sdkws.GroupInfo { return resp.Groups }
-	req := &group.GetJoinedGroupListReq{FromUserID: g.loginUserID, Pagination: &sdkws.RequestPagination{}}
+	req := &group.GetJoinedGroupListReq{FromUserID: g.loginUserID, Pagination: &sdkws.RequestPagination{}, LastUpdateTime: -1} // -1 表示获取全部
+	return util.GetPageAll(ctx, constant.GetJoinedGroupListRouter, req, fn)
+}
+
+func (g *Group) GetServerJoinGroupWithIncrement(ctx context.Context) ([]*sdkws.GroupInfo, error) {
+	maxUpdateTime, err := g.db.GetCustomParams(ctx, "GroupSyncLastedUpdateTime")
+	if err != nil {
+		log.ZError(ctx, "GetGroupSyncLastedUpdateTime", err)
+		return nil, err
+	}
+	log.ZInfo(ctx, "GetGroupSyncLastedUpdateTime", "val", maxUpdateTime)
+	fn := func(resp *group.GetJoinedGroupListResp) []*sdkws.GroupInfo {
+		_ = g.db.SetCustomParams(ctx, "GroupSyncLastedUpdateTime", resp.MaxUpdateTime)
+		return resp.Groups
+	}
+	req := &group.GetJoinedGroupListReq{FromUserID: g.loginUserID, Pagination: &sdkws.RequestPagination{}, LastUpdateTime: maxUpdateTime}
 	return util.GetPageAll(ctx, constant.GetJoinedGroupListRouter, req, fn)
 }
 
@@ -279,4 +319,15 @@ func (g *Group) GetGroupAbstractInfo(ctx context.Context, groupID string) (*grou
 		return nil, errors.New("group not found")
 	}
 	return resp.GroupAbstractInfos[0], nil
+}
+
+func (g *Group) GetGroupAbstractInfos(ctx context.Context, groupIDs []string) ([]*group.GroupAbstractInfo, error) {
+	resp, err := util.CallApi[group.GetGroupAbstractInfoResp](ctx, constant.GetGroupAbstractInfoRouter, &group.GetGroupAbstractInfoReq{GroupIDs: groupIDs})
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.GroupAbstractInfos) == 0 {
+		return nil, errors.New("group not found")
+	}
+	return resp.GroupAbstractInfos, nil
 }
