@@ -15,7 +15,7 @@
 package testv2
 
 import (
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk"
 	"testing"
 	"time"

@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/ccontext"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdk_params_callback"
@@ -29,9 +29,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/OpenIMSDK/protocol/sdkws"
+	"github.com/openimsdk/protocol/sdkws"
 
-	"github.com/OpenIMSDK/tools/mcontext"
+	"github.com/openimsdk/tools/mcontext"
 )
 
 var loggerf *X.Logger

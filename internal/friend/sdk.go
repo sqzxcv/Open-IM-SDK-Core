@@ -16,8 +16,8 @@ package friend
 
 import (
 	"context"
-	"github.com/OpenIMSDK/protocol/wrapperspb"
-	"github.com/OpenIMSDK/tools/errs"
+	"github.com/openimsdk/protocol/wrapperspb"
+	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/util"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
@@ -25,8 +25,8 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/server_api_params"
 
-	"github.com/OpenIMSDK/protocol/friend"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/protocol/friend"
+	"github.com/openimsdk/tools/log"
 )
 
 func (f *Friend) GetSpecifiedFriendsInfo(ctx context.Context, friendUserIDList []string) ([]*server_api_params.FullUserInfo, error) {

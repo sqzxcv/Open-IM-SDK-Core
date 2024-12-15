@@ -20,9 +20,9 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
 
-	"github.com/OpenIMSDK/protocol/friend"
-	"github.com/OpenIMSDK/protocol/sdkws"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/protocol/friend"
+	"github.com/openimsdk/protocol/sdkws"
+	"github.com/openimsdk/tools/log"
 )
 
 func (f *Friend) SyncBothFriendRequest(ctx context.Context, fromUserID, toUserID string) error {

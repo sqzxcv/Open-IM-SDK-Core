@@ -24,12 +24,12 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/syncer"
 
-	authPb "github.com/OpenIMSDK/protocol/auth"
-	"github.com/OpenIMSDK/protocol/sdkws"
-	userPb "github.com/OpenIMSDK/protocol/user"
-	"github.com/OpenIMSDK/tools/log"
+	authPb "github.com/openimsdk/protocol/auth"
+	"github.com/openimsdk/protocol/sdkws"
+	userPb "github.com/openimsdk/protocol/user"
+	"github.com/openimsdk/tools/log"
 
-	PbConstant "github.com/OpenIMSDK/protocol/constant"
+	PbConstant "github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"

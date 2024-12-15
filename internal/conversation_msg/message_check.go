@@ -22,10 +22,10 @@ import (
 	sdk "github.com/openimsdk/openim-sdk-core/v3/pkg/sdk_params_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/log"
 
-	"github.com/OpenIMSDK/protocol/sdkws"
-	utils2 "github.com/OpenIMSDK/tools/utils"
+	"github.com/openimsdk/protocol/sdkws"
+	utils2 "github.com/openimsdk/tools/utils"
 )
 
 // 检测其内部连续性，如果不连续，则向前补齐,获取这一组消息的最大最小seq，以及需要补齐的seq列表长度
@@ -258,7 +258,7 @@ func (c *Conversation) pullMessageIntoTable(ctx context.Context, pullMsgData map
 					log.ZInfo(ctx, "sync message", "msg", msg)
 					selfInsertMessage = append(selfInsertMessage, msg)
 				}
-			} else { //Sent by others
+			} else {                                                                                      //Sent by others
 				if oldMessage, err := c.db.GetMessage(ctx, conversationID, msg.ClientMsgID); err != nil { //Deduplication operation
 					othersInsertMessage = append(othersInsertMessage, msg)
 

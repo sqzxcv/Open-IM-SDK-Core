@@ -25,8 +25,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/OpenIMSDK/protocol/sdkws"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/protocol/sdkws"
+	"github.com/openimsdk/tools/log"
 )
 
 // apiClient is a global HTTP client with a timeout of one minute.

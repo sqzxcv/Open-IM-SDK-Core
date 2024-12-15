@@ -24,9 +24,9 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/sdk_struct"
 	"time"
 
-	"github.com/OpenIMSDK/protocol/sdkws"
-	"github.com/OpenIMSDK/tools/log"
-	utils2 "github.com/OpenIMSDK/tools/utils"
+	"github.com/openimsdk/protocol/sdkws"
+	"github.com/openimsdk/tools/log"
+	utils2 "github.com/openimsdk/tools/utils"
 )
 
 func (c *Conversation) Work(c2v common.Cmd2Value) {

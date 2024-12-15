@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/OpenIMSDK/tools/log"
-	utils2 "github.com/OpenIMSDK/tools/utils"
+	"github.com/openimsdk/tools/log"
+	utils2 "github.com/openimsdk/tools/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/business"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/cache"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/file"
@@ -273,7 +273,7 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 						selfInsertMessage = append(selfInsertMessage, c.msgStructToLocalChatLog(msg))
 					}
 				}
-			} else { //Sent by others
+			} else {                                                                             //Sent by others
 				if _, err := c.db.GetMessage(ctx, conversationID, msg.ClientMsgID); err != nil { //Deduplication operation
 					lc := model_struct.LocalConversation{
 						ConversationType:  v.SessionType,

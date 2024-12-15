@@ -27,9 +27,9 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/log"
 
-	"github.com/OpenIMSDK/tools/errs"
+	"github.com/openimsdk/tools/errs"
 )
 
 func isNumeric(kind reflect.Kind) bool {

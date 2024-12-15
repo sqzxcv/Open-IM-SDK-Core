@@ -17,7 +17,7 @@ package open_im_sdk
 import (
 	"context"
 	"errors"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
 )
 

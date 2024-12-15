@@ -2,7 +2,7 @@ package msgtest
 
 import (
 	"context"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/openim-sdk-core/v3/msgtest/module"
 	"github.com/openimsdk/openim-sdk-core/v3/msgtest/sdk_user_simulator"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/ccontext"
