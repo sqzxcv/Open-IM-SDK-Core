@@ -54,10 +54,16 @@ func (c *Conversation) setConversation(ctx context.Context, apiReq *pbConversati
 }
 
 func (c *Conversation) getServerConversationList(ctx context.Context) ([]*model_struct.LocalConversation, error) {
-	resp, err := util.CallApi[pbConversation.GetAllConversationsResp](ctx, constant.GetAllConversationsRouter, pbConversation.GetAllConversationsReq{OwnerUserID: c.loginUserID})
+	maxUpdateTime, err := c.db.GetCustomParams(ctx, "ConversationSyncLastedUpdateTime")
+	if err != nil {
+		log.ZError(ctx, "ConversationSyncLastedUpdateTime", err)
+		return nil, err
+	}
+	resp, err := util.CallApi[pbConversation.GetAllConversationsResp](ctx, constant.GetAllConversationsRouter, pbConversation.GetAllConversationsReq{OwnerUserID: c.loginUserID, LastUpdateTime: maxUpdateTime})
 	if err != nil {
 		return nil, err
 	}
+	_ = c.db.SetCustomParams(ctx, "ConversationSyncLastedUpdateTime", resp.MaxUpdateTime)
 	return util.Batch(ServerConversationToLocal, resp.Conversations), nil
 }
 
