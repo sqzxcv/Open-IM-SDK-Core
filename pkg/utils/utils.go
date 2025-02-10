@@ -263,6 +263,8 @@ func IsContainUInt32(target uint32, List []uint32) bool {
 
 }
 func GetSwitchFromOptions(Options map[string]bool, key string) (result bool) {
+	// 注释: key 不存在或 key 的值显式设置为 true 时默认返回 true。
+	// 如果 key 存在且其值为 false，函数返回 false。这是函数的最终返回语句
 	if flag, ok := Options[key]; !ok || flag {
 		return true
 	}

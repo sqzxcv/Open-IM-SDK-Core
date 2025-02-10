@@ -201,6 +201,11 @@ build-multiple:
 build-wasm:
 	GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o ${BIN_DIR}/openIM.wasm wasm/cmd/main.go
 
+.PHONY: build-wasm-debug
+build-wasm-debug:
+	GOOS=js GOARCH=wasm go build -gcflags="all=-N -l" -o ${BIN_DIR}/openIM.wasm wasm/cmd/main.go
+
+
 ## install: Install the binary to the BIN_DIR
 .PHONY: install
 install: build

@@ -18,8 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/openimsdk/tools/log"
-	utils2 "github.com/openimsdk/tools/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/business"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/cache"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/file"
@@ -37,6 +35,8 @@ import (
 	sdk "github.com/openimsdk/openim-sdk-core/v3/pkg/sdk_params_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/syncer"
+	"github.com/openimsdk/tools/log"
+	utils2 "github.com/openimsdk/tools/utils"
 
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/sdk_struct"
@@ -205,7 +205,9 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 			_ = utils.JsonStringToStruct(v.AttachedInfo, &attachedInfo)
 			msg.AttachedInfoElem = &attachedInfo
 
-			msg.Status = constant.MsgStatusSendSuccess
+			if msg.Status == constant.MsgStatusSending || msg.Status == constant.MsgStatusDefault {
+				msg.Status = constant.MsgStatusSendSuccess
+			}
 			// msg.IsRead = false
 			//De-analyze data
 			err := c.msgHandleByContentType(msg)

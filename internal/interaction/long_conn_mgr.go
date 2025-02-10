@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openimsdk/protocol/third"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/ccontext"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
@@ -27,6 +26,7 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/sdk_struct"
+	"github.com/openimsdk/protocol/third"
 	"io"
 	"runtime"
 	"strconv"
@@ -34,11 +34,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
 	"github.com/openimsdk/protocol/sdkws"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
-	"github.com/golang/protobuf/proto"
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -181,6 +181,7 @@ func (c *LongConnMgr) readPump(ctx context.Context) {
 	//c.conn.SetPongHandler(function(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		ctx = ccontext.WithOperationID(ctx, utils.OperationIDGenerator())
+		// TODO 每次读取一个消息包, 先判断是否需要重连(有锁), 效率低, 需要优化
 		needRecon, err := c.reConn(ctx, &connNum)
 		if !needRecon {
 			c.closedErr = err
