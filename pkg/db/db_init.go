@@ -45,6 +45,26 @@ type DataBase struct {
 	superGroupMtx sync.RWMutex
 }
 
+func (d *DataBase) GetGroupSyncLastedUpdateTime(ctx context.Context) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DataBase) SetGroupSyncLastedUpdateTime(ctx context.Context, lastUpdateTime int64) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DataBase) SetCustomParams(ctx context.Context, key string, value any) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DataBase) GetCustomParams(ctx context.Context, key string) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *DataBase) GetMultipleMessageReactionExtension(ctx context.Context, msgIDList []string) (result []*model_struct.LocalChatLogReactionExtensions, err error) {
 	//TODO implement me
 	panic("implement me")
