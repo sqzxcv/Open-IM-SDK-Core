@@ -270,14 +270,15 @@ func (g *Group) GetServerJoinGroup(ctx context.Context) ([]*sdkws.GroupInfo, err
 }
 
 func (g *Group) GetServerJoinGroupWithIncrement(ctx context.Context) ([]*sdkws.GroupInfo, error) {
-	maxUpdateTime, err := g.db.GetCustomParams(ctx, "GroupSyncLastedUpdateTime")
+	maxUpdateTime, err := g.db.GetGroupSyncLastedUpdateTime(ctx)
 	if err != nil {
 		log.ZError(ctx, "GetGroupSyncLastedUpdateTime", err)
 		return nil, err
 	}
 	log.ZInfo(ctx, "GetGroupSyncLastedUpdateTime", "val", maxUpdateTime)
 	fn := func(resp *group.GetJoinedGroupListResp) []*sdkws.GroupInfo {
-		_ = g.db.SetCustomParams(ctx, "GroupSyncLastedUpdateTime", resp.MaxUpdateTime)
+		// _ = g.db.SetCustomParams(ctx, "GroupSyncLastedUpdateTime", resp.MaxUpdateTime)
+		g.db.SetGroupSyncLastedUpdateTime(ctx, resp.MaxUpdateTime)
 		return resp.Groups
 	}
 	req := &group.GetJoinedGroupListReq{FromUserID: g.loginUserID, Pagination: &sdkws.RequestPagination{}, LastUpdateTime: maxUpdateTime}

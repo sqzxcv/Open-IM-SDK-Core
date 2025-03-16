@@ -90,7 +90,7 @@ func (d *DataBase) GetConversationListSplitDB(ctx context.Context, offset, count
 	d.mRWMutex.Lock()
 	defer d.mRWMutex.Unlock()
 	var conversationList []model_struct.LocalConversation
-	err := utils.Wrap(d.conn.WithContext(ctx).Where("latest_msg_send_time > ?", 0).Order("case when is_pinned=1 then 0 else 1 end,max(latest_msg_send_time,draft_text_time) DESC").Offset(offset).Limit(count).Find(&conversationList).Error,
+	err := utils.Wrap(d.conn.WithContext(ctx).Where("latest_msg_send_time > ?", 0).Order("case when is_pinned=1 then 0 else 1 end, task_status DESC,max(latest_msg_send_time,draft_text_time) DESC").Offset(offset).Limit(count).Find(&conversationList).Error,
 		"GetFriendList failed")
 	var transfer []*model_struct.LocalConversation
 	for _, v := range conversationList {
@@ -380,4 +380,16 @@ func (d *DataBase) SearchConversations(ctx context.Context, searchParam string) 
 	}
 
 	return transfer, utils.Wrap(err, "SearchConversation failed ")
+}
+
+func (d *DataBase) ChangeConversationTaskStatus(ctx context.Context, conversationID string, taskStatus int32) error {
+	d.mRWMutex.Lock()
+	defer d.mRWMutex.Unlock()
+	c := model_struct.LocalConversation{ConversationID: conversationID, TaskStatus: taskStatus}
+	err := d.conn.WithContext(ctx).Model(&model_struct.LocalConversation{}).Where("conversation_id = ?", conversationID).Updates(c).Error
+	if err != nil {
+		return utils.Wrap(err, "ChangeConversationTaskStatus failed")
+	}
+	return nil
+
 }

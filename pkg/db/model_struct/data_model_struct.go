@@ -60,6 +60,10 @@ type LocalFriend struct {
 	IsPinned     bool   `gorm:"column:is_pinned;" json:"isPinned"`
 }
 
+func (t LocalFriend) TableName() string {
+	return "local_friend"
+}
+
 // message FriendRequest{
 // string  FromUserID = 1;
 // string ToUserID = 2;
@@ -92,6 +96,10 @@ type LocalFriendRequest struct {
 	Ex            string `gorm:"column:ex;type:varchar(1024)" json:"ex"`
 
 	AttachedInfo string `gorm:"column:attached_info;type:varchar(1024)" json:"attachedInfo"`
+}
+
+func (r LocalFriendRequest) TableName() string {
+	return "local_friend_request"
 }
 
 //message GroupInfo{
@@ -143,6 +151,10 @@ type LocalGroup struct {
 	NotificationUserID     string `gorm:"column:notification_user_id;size:64" json:"notificationUserID"`
 }
 
+func (g LocalGroup) TableName() string {
+	return "local_group"
+}
+
 //message GroupMemberFullInfo {
 //string GroupID = 1 ;
 //string UserID = 2 ;
@@ -177,6 +189,10 @@ type LocalGroupMember struct {
 	OperatorUserID string `gorm:"column:operator_user_id;type:varchar(64)" json:"operatorUserID"`
 	Ex             string `gorm:"column:ex;type:varchar(1024)" json:"ex"`
 	AttachedInfo   string `gorm:"column:attached_info;type:varchar(1024)" json:"attachedInfo"`
+}
+
+func (m LocalGroupMember) TableName() string {
+	return "local_group_member"
 }
 
 // message GroupRequest{
@@ -220,6 +236,10 @@ type LocalGroupRequest struct {
 	InviterUserID string `gorm:"column:inviter_user_id;size:64"  json:"inviterUserID"`
 }
 
+func (r LocalGroupRequest) TableName() string {
+	return "local_group_request"
+}
+
 // string UserID = 1;
 // string Nickname = 2;
 // string FaceUrl = 3;
@@ -240,6 +260,10 @@ type LocalUser struct {
 	Ex               string `gorm:"column:ex;type:varchar(1024)" json:"ex"`
 	AttachedInfo     string `gorm:"column:attached_info;type:varchar(1024)" json:"attachedInfo"`
 	GlobalRecvMsgOpt int32  `gorm:"column:global_recv_msg_opt" json:"globalRecvMsgOpt"`
+}
+
+func (u LocalUser) TableName() string {
+	return "local_user"
 }
 
 // message BlackInfo{
@@ -264,14 +288,26 @@ type LocalBlack struct {
 	AttachedInfo   string `gorm:"column:attached_info;type:varchar(1024)" json:"attachedInfo"`
 }
 
+func (b LocalBlack) TableName() string {
+	return "local_black"
+}
+
 type LocalSeqData struct {
 	UserID string `gorm:"column:user_id;primary_key;type:varchar(64)"`
 	Seq    uint32 `gorm:"column:seq"`
 }
 
+func (s LocalSeqData) TableName() string {
+	return "local_seq_data"
+}
+
 type LocalSeq struct {
 	ID     string `gorm:"column:id;primary_key;type:varchar(64)"`
 	MinSeq uint32 `gorm:"column:min_seq"`
+}
+
+func (s LocalSeq) TableName() string {
+	return "local_seq"
 }
 
 // `create table if not exists  chat_log (
@@ -334,6 +370,10 @@ type LocalChatLog struct {
 	MsgFirstModifyTime   int64  `gorm:"column:msg_first_modify_time" json:"msgFirstModifyTime"`
 }
 
+func (l LocalChatLog) TableName() string {
+	return "local_chat_log"
+}
+
 type LocalErrChatLog struct {
 	Seq              int64  `gorm:"column:seq;primary_key" json:"seq"`
 	ClientMsgID      string `gorm:"column:client_msg_id;type:char(64)" json:"clientMsgID"`
@@ -354,6 +394,11 @@ type LocalErrChatLog struct {
 	AttachedInfo     string `gorm:"column:attached_info;type:varchar(1024)" json:"attachedInfo"`
 	Ex               string `gorm:"column:ex;type:varchar(1024)" json:"ex"`
 }
+
+func (l LocalErrChatLog) TableName() string {
+	return "local_err_chat_log"
+}
+
 type TempCacheLocalChatLog struct {
 	ClientMsgID      string `gorm:"column:client_msg_id;primary_key;type:char(64)" json:"clientMsgID"`
 	ServerMsgID      string `gorm:"column:server_msg_id;type:char(64)" json:"serverMsgID"`
@@ -373,6 +418,10 @@ type TempCacheLocalChatLog struct {
 	CreateTime       int64  `gorm:"column:create_time" json:"createTime"`
 	AttachedInfo     string `gorm:"column:attached_info;type:varchar(1024)" json:"attachedInfo"`
 	Ex               string `gorm:"column:ex;type:varchar(1024)" json:"ex"`
+}
+
+func (t TempCacheLocalChatLog) TableName() string {
+	return "temp_cache_local_chat_log"
 }
 
 // `create table if not exists  conversation (
@@ -419,12 +468,22 @@ type LocalConversation struct {
 	HasReadSeq            int64  `gorm:"column:has_read_seq" json:"hasReadSeq"`
 	MsgDestructTime       int64  `gorm:"column:msg_destruct_time;default:604800" json:"msgDestructTime"`
 	IsMsgDestruct         bool   `gorm:"column:is_msg_destruct;default:false" json:"isMsgDestruct"`
+	TaskStatus            int32  `gorm:"column:task_status;comment:2-done,3-doing, 4-undo, -1-unknown; default:-1" json:"taskStatus"`
 }
+
+func (c LocalConversation) TableName() string {
+	return "local_conversation"
+}
+
 type LocalConversationUnreadMessage struct {
 	ConversationID string `gorm:"column:conversation_id;primary_key;type:char(128)" json:"conversationID"`
 	ClientMsgID    string `gorm:"column:client_msg_id;primary_key;type:char(64)" json:"clientMsgID"`
 	SendTime       int64  `gorm:"column:send_time" json:"sendTime"`
 	Ex             string `gorm:"column:ex;type:varchar(1024)" json:"ex"`
+}
+
+func (c LocalConversationUnreadMessage) TableName() string {
+	return "local_conversation_unread_message"
 }
 
 // message GroupRequest{
@@ -442,13 +501,26 @@ type LocalAdminGroupRequest struct {
 	LocalGroupRequest
 }
 
+func (r LocalAdminGroupRequest) TableName() string {
+	return "local_admin_group_request"
+}
+
 type LocalChatLogReactionExtensions struct {
 	ClientMsgID             string `gorm:"column:client_msg_id;primary_key;type:char(64)" json:"clientMsgID"`
 	LocalReactionExtensions []byte `gorm:"column:local_reaction_extensions" json:"localReactionExtensions"`
 }
+
+func (l LocalChatLogReactionExtensions) TableName() string {
+	return "local_chat_log_reaction_extensions"
+}
+
 type LocalWorkMomentsNotification struct {
 	JsonDetail string `gorm:"column:json_detail"`
 	CreateTime int64  `gorm:"create_time"`
+}
+
+func (LocalWorkMomentsNotification) TableName() string {
+	return "local_work_moments_notification"
 }
 
 type WorkMomentNotificationMsg struct {
@@ -463,10 +535,6 @@ type WorkMomentNotificationMsg struct {
 	FaceURL             string `json:"faceURL"`
 	WorkMomentContent   string `json:"workMomentContent"`
 	CreateTime          int32  `json:"createTime"`
-}
-
-func (LocalWorkMomentsNotification) TableName() string {
-	return "local_work_moments_notification"
 }
 
 type LocalWorkMomentsNotificationUnreadCount struct {
@@ -527,4 +595,29 @@ type UserCommand struct {
 	UserID   string            `bson:"userID"`
 	Type     int32             `bson:"type"`
 	Commands map[string]string `bson:"commands"`
+}
+
+type LocalGroupRelation struct {
+	GroupID string `json:"groupId,omitempty" gorm:"column:group_id;not null;primaryKey;"`             // 客服群组唯一id
+	AppID   string `json:"appId,omitempty" gorm:"column:app_id;type:varchar(255);not null;size:255;"` //app id
+	//CreatedAt   *time.Time `json:"createdAt" gorm:"column:created_at"`                                                                                                                 // 更新时间, 标记该会话是否活跃, 当客服领取会话时, 会自动标记
+	ServeUserID string `json:"serveUserId,omitempty" gorm:"column:serve_user_id;type:varchar(255);not null;size:255;comment:用户侧uuid;uniqueIndex;not null;"`                     // 服务用户id, 用户侧用户id
+	TaskStatus  string `json:"taskStatus,omitempty" gorm:"column:task_status;type:varchar(255);not null;size:255;comment:任务状态taskStatusDoing, taskStatusDone, taskStatusUndo"` // 任务状态
+	CurrentKeFu string `json:"currentKefu,omitempty" gorm:"column:current_kefu;type:varchar(255);not null;size:255;comment:当前服务客服"`                                          // 当前服务客服
+	IsKefuGroup bool   `json:"isKefuGroup,omitempty" gorm:"-"`                                                                                                                     // 是否是客服群组, 目前为了前端展示默认全部是true
+	LastKeFu    string `json:"lastKefu,omitempty" gorm:"column:last_kefu;type:varchar(255);default:null;size:255;comment:上次服务的客服"`                                          // 上次服务的客服
+	//TaskStatusNum int                 `json:"taskStatusNum" gorm:"-"`                                                                                                                             // 任务状态整形表示
+}
+
+func (my *LocalGroupRelation) TableName() string {
+	return "app_group_relation"
+}
+
+type CustomSaveInfo struct {
+	Key   string `json:"key,omitempty" gorm:"key;not null;primaryKey"`
+	Value string `json:"value,omitempty" gorm:"value"`
+}
+
+func (my CustomSaveInfo) TableName() string {
+	return "custom_save_info"
 }

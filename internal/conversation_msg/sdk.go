@@ -1163,6 +1163,20 @@ func (c *Conversation) SearchConversation(ctx context.Context, searchParam strin
 	return apiConversations, nil
 }
 
+func (c *Conversation) ChangeConversationTaskStatus(ctx context.Context, conversationID string, taskStatus int) error {
+	// Check if search parameter is empty
+	if conversationID == "" {
+		return sdkerrs.ErrArgs.Wrap("conversationID cannot be empty")
+	}
+
+	err := c.db.ChangeConversationTaskStatus(ctx, conversationID, int32(taskStatus))
+	if err != nil {
+		// Handle any errors that occurred during the search
+		return err
+	}
+	return nil
+}
+
 /**
 **Get some reaction extensions in reactionExtensionKeyList of message list
  */

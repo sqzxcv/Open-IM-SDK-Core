@@ -26,10 +26,10 @@ import (
 
 	"github.com/openimsdk/tools/log"
 
-	"github.com/openimsdk/tools/utils"
 	"github.com/openimsdk/protocol/group"
 	"github.com/openimsdk/protocol/sdkws"
 	"github.com/openimsdk/protocol/wrapperspb"
+	"github.com/openimsdk/tools/utils"
 )
 
 // // deprecated use CreateGroup
@@ -345,4 +345,16 @@ func (g *Group) IsJoinGroup(ctx context.Context, groupID string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (g *Group) GetGroupRelations(ctx context.Context, groupIds []string) ([]*model_struct.LocalGroupRelation, error) {
+	relations, err := g.db.GetGroupRelationByGroupID(ctx, groupIds)
+	if err != nil {
+		return nil, err
+	}
+	return relations, nil
+}
+
+func (g *Group) UpdateOrCreateGroupRelation(ctx context.Context, groupRelationes []*model_struct.LocalGroupRelation) error {
+	return g.db.UpdateOrCreateGroupRelation(ctx, groupRelationes)
 }

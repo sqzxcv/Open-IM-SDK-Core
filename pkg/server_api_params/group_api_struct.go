@@ -313,3 +313,15 @@ type GetGroupAbstractInfoResp struct {
 	GroupMemberNumber   int32  `json:"groupMemberNumber"`
 	GroupMemberListHash uint64 `json:"groupMemberListHash"`
 }
+
+type GroupRelation struct {
+	GroupID string `json:"groupId,omitempty" gorm:"column:group_id;not null;primaryKey;"`             // 客服群组唯一id
+	AppID   string `json:"appId,omitempty" gorm:"column:app_id;type:varchar(255);not null;size:255;"` //app id
+	//CreatedAt   *time.Time `json:"createdAt" gorm:"column:created_at"`                                                                                                                 // 更新时间, 标记该会话是否活跃, 当客服领取会话时, 会自动标记
+	ServeUserID string `json:"serveUserId,omitempty" gorm:"column:serve_user_id;type:varchar(255);not null;size:255;comment:用户侧uuid;uniqueIndex;not null;"`                     // 服务用户id, 用户侧用户id
+	TaskStatus  string `json:"taskStatus,omitempty" gorm:"column:task_status;type:varchar(255);not null;size:255;comment:任务状态taskStatusDoing, taskStatusDone, taskStatusUndo"` // 任务状态
+	CurrentKeFu string `json:"currentKefu,omitempty" gorm:"column:current_kefu;type:varchar(255);not null;size:255;comment:当前服务客服"`                                          // 当前服务客服
+	IsKefuGroup bool   `json:"isKefuGroup,omitempty" gorm:"-"`                                                                                                                     // 是否是客服群组, 目前为了前端展示默认全部是true
+	LastKeFu    string `json:"lastKefu,omitempty" gorm:"column:last_kefu;type:varchar(255);default:null;size:255;comment:上次服务的客服"`                                          // 上次服务的客服
+	//TaskStatusNum int                 `json:"taskStatusNum" gorm:"-"`                                                                                                                             // 任务状态整形表示
+}

@@ -213,6 +213,7 @@ type ConversationModel interface {
 	SearchAllMessageByContentType(ctx context.Context, conversationID string, contentType int) ([]*model_struct.LocalChatLog, error)
 	SuperGroupSearchAllMessageByContentType(ctx context.Context, superGroupID string, contentType int32) ([]*model_struct.LocalChatLog, error)
 	SearchConversations(ctx context.Context, searchParam string) ([]*model_struct.LocalConversation, error)
+	ChangeConversationTaskStatus(ctx context.Context, conversationID string, taskStatus int32) error
 }
 
 type UserModel interface {
@@ -289,4 +290,10 @@ type DataBase interface {
 	ReactionModel
 	S3Model
 	SendingMessagesModel
+	GroupRelationModel
+}
+
+type GroupRelationModel interface {
+	UpdateOrCreateGroupRelation(ctx context.Context, groupRelationes []*model_struct.LocalGroupRelation) error
+	GetGroupRelationByGroupID(ctx context.Context, groupIDs []string) ([]*model_struct.LocalGroupRelation, error)
 }

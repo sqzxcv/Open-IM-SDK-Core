@@ -7,4 +7,8 @@ cd $current_shell_path
 
 
 make ios
+
+cd $current_shell_path
+rm -rf ../futrtalk-im-sdk-flutter/ios/frameworks/FutrtalkIMCore.xcframework
+
 mv ./build/FutrtalkIMCore.xcframework ../futrtalk-im-sdk-flutter/ios/frameworks/FutrtalkIMCore.xcframework

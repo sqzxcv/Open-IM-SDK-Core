@@ -20,6 +20,7 @@ package db
 import (
 	"context"
 	"errors"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/db_migration"
 	"path/filepath"
 	"sync"
 	"time"
@@ -43,26 +44,6 @@ type DataBase struct {
 	friendMtx     sync.RWMutex
 	userMtx       sync.RWMutex
 	superGroupMtx sync.RWMutex
-}
-
-func (d *DataBase) GetGroupSyncLastedUpdateTime(ctx context.Context) (int64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DataBase) SetGroupSyncLastedUpdateTime(ctx context.Context, lastUpdateTime int64) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DataBase) SetCustomParams(ctx context.Context, key string, value any) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DataBase) GetCustomParams(ctx context.Context, key string) (int64, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (d *DataBase) GetMultipleMessageReactionExtension(ctx context.Context, msgIDList []string) (result []*model_struct.LocalChatLogReactionExtensions, err error) {
@@ -147,27 +128,28 @@ func (d *DataBase) initDB(ctx context.Context, logLevel int) error {
 	sqlDB.SetConnMaxIdleTime(time.Minute * 10)
 	d.conn = db
 
-	err = db.AutoMigrate(
-		&model_struct.LocalFriend{},
-		&model_struct.LocalFriendRequest{},
-		&model_struct.LocalGroup{},
-		&model_struct.LocalGroupMember{},
-		&model_struct.LocalGroupRequest{},
-		&model_struct.LocalErrChatLog{},
-		&model_struct.LocalUser{},
-		&model_struct.LocalBlack{},
-		&model_struct.LocalConversation{},
-		&model_struct.NotificationSeqs{},
-		&model_struct.LocalChatLog{},
-		&model_struct.LocalAdminGroupRequest{},
-		&model_struct.LocalWorkMomentsNotification{},
-		&model_struct.LocalWorkMomentsNotificationUnreadCount{},
-		&model_struct.TempCacheLocalChatLog{},
-		&model_struct.LocalChatLogReactionExtensions{},
-		&model_struct.LocalUpload{},
-		&model_struct.LocalStranger{},
-		&model_struct.LocalSendingMessages{},
-	)
+	//err = db.AutoMigrate(
+	//	&model_struct.LocalFriend{},
+	//	&model_struct.LocalFriendRequest{},
+	//	&model_struct.LocalGroup{},
+	//	&model_struct.LocalGroupMember{},
+	//	&model_struct.LocalGroupRequest{},
+	//	&model_struct.LocalErrChatLog{},
+	//	&model_struct.LocalUser{},
+	//	&model_struct.LocalBlack{},
+	//	&model_struct.LocalConversation{},
+	//	&model_struct.NotificationSeqs{},
+	//	&model_struct.LocalChatLog{},
+	//	&model_struct.LocalAdminGroupRequest{},
+	//	&model_struct.LocalWorkMomentsNotification{},
+	//	&model_struct.LocalWorkMomentsNotificationUnreadCount{},
+	//	&model_struct.TempCacheLocalChatLog{},
+	//	&model_struct.LocalChatLogReactionExtensions{},
+	//	&model_struct.LocalUpload{},
+	//	&model_struct.LocalStranger{},
+	//	&model_struct.LocalSendingMessages{},
+	//)
+	err = db_migration.AutoMigration(db)
 	if err != nil {
 		return err
 	}
