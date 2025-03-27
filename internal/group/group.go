@@ -16,10 +16,6 @@ package group
 
 import (
 	"context"
-	"github.com/openimsdk/protocol/group"
-	"github.com/openimsdk/protocol/sdkws"
-	"github.com/openimsdk/tools/log"
-	utils2 "github.com/openimsdk/tools/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/internal/util"
 	"github.com/openimsdk/openim-sdk-core/v3/open_im_sdk_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
@@ -29,6 +25,10 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/syncer"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
+	"github.com/openimsdk/protocol/group"
+	"github.com/openimsdk/protocol/sdkws"
+	"github.com/openimsdk/tools/log"
+	utils2 "github.com/openimsdk/tools/utils"
 )
 
 func NewGroup(loginUserID string, db db_interface.DataBase,
@@ -283,15 +283,15 @@ func (g *Group) GetJoinedDiffusionGroupIDListFromSvr(ctx context.Context) ([]str
 }
 
 func (g *Group) DeleteGroupAndMemberInfo(ctx context.Context) {
-	memberGroupIDs, err := g.db.GetGroupMemberAllGroupIDs(ctx)
+	memberGroupIDs, err := g.db.GetGroupMemberAllGroupIDsWithoutKefuGroup(ctx)
 	if err != nil {
-		log.ZError(ctx, "GetGroupMemberAllGroupIDs failed", err)
+		log.ZError(ctx, "GetGroupMemberAllGroupIDsWithoutKefuGroup failed", err)
 		return
 	}
 	if len(memberGroupIDs) > 0 {
-		groups, err := g.db.GetJoinedGroupListDB(ctx)
+		groups, err := g.db.GetJoinGroupListWithoutKefuGroup(ctx)
 		if err != nil {
-			log.ZError(ctx, "GetJoinedGroupListDB failed", err)
+			log.ZError(ctx, "GetJoinGroupListWithoutKefuGroup failed", err)
 			return
 		}
 		memberGroupIDMap := make(map[string]struct{})

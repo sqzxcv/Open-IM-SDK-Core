@@ -186,11 +186,13 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 	log.ZDebug(ctx, "message come here conversation ch", "conversation length", len(allMsg))
 	b := time.Now()
 	onlineMap := make(map[onlineMsgKey]struct{})
+	var converationIDs []string
 	for conversationID, msgs := range allMsg {
 		log.ZDebug(ctx, "parse message in one conversation", "conversationID",
 			conversationID, "message length", len(msgs.Msgs))
 		var insertMessage, selfInsertMessage, othersInsertMessage []*model_struct.LocalChatLog
 		var updateMessage []*model_struct.LocalChatLog
+		converationIDs = append(converationIDs, conversationID)
 		for _, v := range msgs.Msgs {
 			log.ZDebug(ctx, "parse message ", "conversationID", conversationID, "msg", v)
 			isHistory = utils.GetSwitchFromOptions(v.Options, constant.IsHistory)
@@ -321,9 +323,10 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 		insertMsg[conversationID] = append(insertMessage, c.faceURLAndNicknameHandle(ctx, selfInsertMessage, othersInsertMessage, conversationID)...)
 		updateMsg[conversationID] = updateMessage
 	}
-	list, err := c.db.GetAllConversationListDB(ctx)
+	//list, err := c.db.GetAllConversationListDB(ctx)
+	list, err := c.db.GetMultipleConversationDB(ctx, converationIDs)
 	if err != nil {
-		log.ZError(ctx, "GetAllConversationListDB", err)
+		log.ZError(ctx, "GetMultipleConversationDB", err)
 	}
 	m := make(map[string]*model_struct.LocalConversation)
 	listToMap(list, m)
@@ -415,19 +418,19 @@ func removeElementInList(a sdk_struct.NewMsgList, e *sdk_struct.MsgStruct) (b sd
 	}
 	return b
 }
-func (c *Conversation) diff(ctx context.Context, local, generated, cc, nc map[string]*model_struct.LocalConversation) {
+func (c *Conversation) diff(ctx context.Context, localInDB, generated, conversationChangedSet, newConversationSet map[string]*model_struct.LocalConversation) {
 	var newConversations []*model_struct.LocalConversation
 	for _, v := range generated {
-		if localC, ok := local[v.ConversationID]; ok {
+		if localC, ok := localInDB[v.ConversationID]; ok {
 
 			if v.LatestMsgSendTime > localC.LatestMsgSendTime {
 				localC.UnreadCount = localC.UnreadCount + v.UnreadCount
 				localC.LatestMsg = v.LatestMsg
 				localC.LatestMsgSendTime = v.LatestMsgSendTime
-				cc[v.ConversationID] = localC
+				conversationChangedSet[v.ConversationID] = localC
 			} else {
 				localC.UnreadCount = localC.UnreadCount + v.UnreadCount
-				cc[v.ConversationID] = localC
+				conversationChangedSet[v.ConversationID] = localC
 			}
 
 		} else {
@@ -438,7 +441,7 @@ func (c *Conversation) diff(ctx context.Context, local, generated, cc, nc map[st
 		log.ZError(ctx, "batchAddFaceURLAndName err", err, "conversations", newConversations)
 	} else {
 		for _, v := range newConversations {
-			nc[v.ConversationID] = v
+			newConversationSet[v.ConversationID] = v
 		}
 	}
 }

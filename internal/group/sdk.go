@@ -181,7 +181,8 @@ func (g *Group) GetJoinedGroupList(ctx context.Context) ([]*model_struct.LocalGr
 }
 
 func (g *Group) GetSpecifiedGroupsInfo(ctx context.Context, groupIDs []string) ([]*model_struct.LocalGroup, error) {
-	groupList, err := g.db.GetJoinedGroupListDB(ctx)
+	//groupList, err := g.db.GetJoinedGroupListDB(ctx)
+	groupList, err := g.db.GetGroups(ctx, groupIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -335,14 +336,17 @@ func (g *Group) SearchGroupMembers(ctx context.Context, searchParam *sdk_params_
 }
 
 func (g *Group) IsJoinGroup(ctx context.Context, groupID string) (bool, error) {
-	groupList, err := g.db.GetJoinedGroupListDB(ctx)
+	groupList, err := g.db.GetGroups(ctx, []string{groupID})
 	if err != nil {
 		return false, err
 	}
-	for _, localGroup := range groupList {
-		if localGroup.GroupID == groupID {
-			return true, nil
-		}
+	//for _, localGroup := range groupList {
+	//	if localGroup.GroupID == groupID {
+	//		return true, nil
+	//	}
+	//}
+	if len(groupList) > 0 {
+		return true, nil
 	}
 	return false, nil
 }

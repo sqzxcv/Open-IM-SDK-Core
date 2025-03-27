@@ -187,7 +187,8 @@ func (g *Group) SyncAllJoinedGroupsAndMembers(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	groups, err := g.db.GetJoinedGroupListDB(ctx)
+	//fix 2025-3-26 修改逻辑, 客服group 不同步成员, 只同步普通group信息
+	groups, err := g.db.GetJoinGroupListWithoutKefuGroup(ctx)
 	if err != nil {
 		return err
 	}
@@ -217,7 +218,11 @@ func (g *Group) syncAllJoinedGroupsWithIncrement(ctx context.Context) ([]*sdkws.
 	if err != nil {
 		return nil, err
 	}
-	localData, err := g.db.GetJoinedGroupListDB(ctx)
+	var groupids []string
+	for _, group := range groups {
+		groupids = append(groupids, group.GroupID)
+	}
+	localData, err := g.db.GetGroups(ctx, groupids)
 	if err != nil {
 		return nil, err
 	}

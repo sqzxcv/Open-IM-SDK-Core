@@ -71,6 +71,28 @@ func (i *LocalGroups) GetJoinedGroupListDB(ctx context.Context) (result []*model
 	}
 }
 
+func (i *LocalGroups) GetJoinGroupListWithoutKefuGroup(ctx context.Context) (result []*model_struct.LocalGroup, err error) {
+	gList, err := exec.Exec()
+	if err != nil {
+		return nil, err
+	} else {
+		if v, ok := gList.(string); ok {
+			var temp []model_struct.LocalGroup
+			err := utils.JsonStringToStruct(v, &temp)
+			if err != nil {
+				return nil, err
+			}
+			for _, v := range temp {
+				v1 := v
+				result = append(result, &v1)
+			}
+			return result, err
+		} else {
+			return nil, exec.ErrType
+		}
+	}
+}
+
 func (i *LocalGroups) GetGroups(ctx context.Context, groupIDs []string) (result []*model_struct.LocalGroup, err error) {
 	gList, err := exec.Exec(utils.StructToJsonString(groupIDs))
 	if err != nil {
@@ -143,6 +165,23 @@ func (i *LocalGroups) SubtractMemberCount(ctx context.Context, groupID string) e
 	return err
 }
 func (i *LocalGroups) GetGroupMemberAllGroupIDs(ctx context.Context) (result []string, err error) {
+	groupIDList, err := exec.Exec()
+	if err != nil {
+		return nil, err
+	} else {
+		if v, ok := groupIDList.(string); ok {
+			err := utils.JsonStringToStruct(v, &result)
+			if err != nil {
+				return nil, err
+			}
+			return result, err
+		} else {
+			return nil, exec.ErrType
+		}
+	}
+}
+
+func (i *LocalGroups) GetGroupMemberAllGroupIDsWithoutKefuGroup(ctx context.Context) (result []string, err error) {
 	groupIDList, err := exec.Exec()
 	if err != nil {
 		return nil, err

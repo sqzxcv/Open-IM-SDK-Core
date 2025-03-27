@@ -61,6 +61,7 @@ type GroupModel interface {
 	GetGroupOwnerAndAdminByGroupID(ctx context.Context, groupID string) ([]*model_struct.LocalGroupMember, error)
 	GetGroupMemberUIDListByGroupID(ctx context.Context, groupID string) (result []string, err error)
 	GetGroupMemberAllGroupIDs(ctx context.Context) ([]string, error)
+	GetGroupMemberAllGroupIDsWithoutKefuGroup(ctx context.Context) ([]string, error)
 	InsertGroupMember(ctx context.Context, groupMember *model_struct.LocalGroupMember) error
 	BatchInsertGroupMember(ctx context.Context, groupMemberList []*model_struct.LocalGroupMember) error
 	DeleteGroupMember(ctx context.Context, groupID, userID string) error
@@ -74,6 +75,7 @@ type GroupModel interface {
 	SetGroupSyncLastedUpdateTime(ctx context.Context, lastUpdateTime int64) error
 	SetCustomParams(ctx context.Context, key string, value any) error
 	GetCustomParams(ctx context.Context, key string, ) (int64, error)
+	GetJoinGroupListWithoutKefuGroup(ctx context.Context) ([]*model_struct.LocalGroup, error)
 }
 
 type MessageModel interface {
