@@ -20,6 +20,7 @@ package indexdb
 import (
 	"context"
 	"github.com/openimsdk/openim-sdk-core/v3/wasm/exec"
+	"github.com/openimsdk/tools/log"
 )
 
 import (
@@ -125,9 +126,14 @@ func (i *Friend) GetFriendInfoList(ctx context.Context, friendUserIDList []strin
 		return nil, err
 	} else {
 		if v, ok := gList.(string); ok {
+			if v == "" {
+				result = make([]*model_struct.LocalFriend, 0)
+				return result, nil
+			}
 			var temp []model_struct.LocalFriend
 			err := utils.JsonStringToStruct(v, &temp)
 			if err != nil {
+				log.ZError(ctx, "GetFriendInfoList", err, "content:", v)
 				return nil, err
 			}
 			for _, v := range temp {
