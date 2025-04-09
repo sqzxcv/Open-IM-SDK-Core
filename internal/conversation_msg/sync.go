@@ -16,18 +16,22 @@ package conversation_msg
 
 import (
 	"context"
-	utils2 "github.com/openimsdk/tools/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/syncer"
+	utils2 "github.com/openimsdk/tools/utils"
 	"time"
 
 	"github.com/openimsdk/tools/log"
 )
 
 func (c *Conversation) SyncConversationsAndTriggerCallback(ctx context.Context, conversationsOnServer []*model_struct.LocalConversation) error {
-	conversationsOnLocal, err := c.db.GetAllConversations(ctx)
+	var conversationIDs []string
+	for _, conversation := range conversationsOnServer {
+		conversationIDs = append(conversationIDs, conversation.ConversationID)
+	}
+	conversationsOnLocal, err := c.db.GetMultipleConversationDB(ctx, conversationIDs)
 	if err != nil {
 		return err
 	}
@@ -65,17 +69,17 @@ func (c *Conversation) SyncAllConversations(ctx context.Context) error {
 
 func (c *Conversation) SyncAllConversationHashReadSeqs(ctx context.Context) error {
 	log.ZDebug(ctx, "start SyncConversationHashReadSeqs")
-	seqs, err := c.getServerHasReadAndMaxSeqs(ctx)
+	resp, changedIDs, err := c.getServerHasReadAndMaxSeqs(ctx)
 	if err != nil {
 		return err
 	}
-	if len(seqs) == 0 {
+
+	if len(changedIDs) == 0 {
 		return nil
 	}
-	var conversationChangedIDs []string
+	//var conversationChangedIDs []string
 	var conversationIDsNeedSync []string
-
-	conversationsOnLocal, err := c.db.GetAllConversations(ctx)
+	conversationsOnLocal, err := c.db.GetMultipleConversationDB(ctx, changedIDs)
 	if err != nil {
 		log.ZWarn(ctx, "get all conversations err", err)
 		return err
@@ -83,28 +87,29 @@ func (c *Conversation) SyncAllConversationHashReadSeqs(ctx context.Context) erro
 	conversationsOnLocalMap := utils2.SliceToMap(conversationsOnLocal, func(e *model_struct.LocalConversation) string {
 		return e.ConversationID
 	})
-	for conversationID, v := range seqs {
+	for _, conversationID := range changedIDs {
 		var unreadCount int32
-		c.maxSeqRecorder.Set(conversationID, v.MaxSeq)
-		if v.MaxSeq-v.HasReadSeq < 0 {
-			unreadCount = 0
-			log.ZWarn(ctx, "unread count is less than 0", nil, "conversationID",
-				conversationID, "maxSeq", v.MaxSeq, "hasReadSeq", v.HasReadSeq)
-		} else {
-			unreadCount = int32(v.MaxSeq - v.HasReadSeq)
-		}
+		//c.maxSeqRecorder.Set(conversationID, v.MaxSeq)
 		if conversation, ok := conversationsOnLocalMap[conversationID]; ok {
-			if conversation.UnreadCount != unreadCount || conversation.HasReadSeq != v.HasReadSeq {
-				if err := c.db.UpdateColumnsConversation(ctx, conversationID, map[string]interface{}{"unread_count": unreadCount, "has_read_seq": v.HasReadSeq}); err != nil {
+			maxSeq := conversation.MaxSeq
+			hasReadSeq := conversation.HasReadSeq
+			if maxSeq-hasReadSeq < 0 {
+				unreadCount = 0
+				log.ZWarn(ctx, "unread count is less than 0", nil, "conversationID",
+					conversationID, "maxSeq", maxSeq, "hasReadSeq", hasReadSeq)
+			} else {
+				unreadCount = int32(maxSeq - hasReadSeq)
+			}
+			if conversation.UnreadCount != unreadCount {
+				if err := c.db.UpdateColumnsConversation(ctx, conversationID, map[string]interface{}{"unread_count": unreadCount}); err != nil {
 					log.ZWarn(ctx, "UpdateColumnsConversation err", err, "conversationID", conversationID)
 					continue
 				}
-				conversationChangedIDs = append(conversationChangedIDs, conversationID)
+				//conversationChangedIDs = append(conversationChangedIDs, conversationID)
 			}
 		} else {
 			conversationIDsNeedSync = append(conversationIDsNeedSync, conversationID)
 		}
-
 	}
 	if len(conversationIDsNeedSync) > 0 {
 		conversationsOnServer, err := c.getServerConversationsByIDs(ctx, conversationIDsNeedSync)
@@ -119,18 +124,25 @@ func (c *Conversation) SyncAllConversationHashReadSeqs(ctx context.Context) erro
 
 		for _, conversation := range conversationsOnServer {
 			var unreadCount int32
-			v, ok := seqs[conversation.ConversationID]
-			if !ok {
-				continue
+			maxSeq := int64(0)
+			hasReadSeq := int64(0)
+			if s, ok := resp.MaxSeqs[conversation.ConversationID]; ok {
+				maxSeq = s.Seq
 			}
-			if v.MaxSeq-v.HasReadSeq < 0 {
+			if s, ok := resp.HasReadSeqs[conversation.ConversationID]; ok {
+				hasReadSeq = s.Seq
+			}
+			if maxSeq-hasReadSeq < 0 {
 				unreadCount = 0
-				log.ZWarn(ctx, "unread count is less than 0", nil, "server seq", v, "conversation", conversation)
+				// hasReadSeq数据先到, maxSeq没获取到, 这设置maxSeq为hasReadSeq
+				maxSeq = hasReadSeq
+				log.ZWarn(ctx, "unread count is less than 0", nil, "server seq", maxSeq, "conversation", conversation)
 			} else {
-				unreadCount = int32(v.MaxSeq - v.HasReadSeq)
+				unreadCount = int32(maxSeq - hasReadSeq)
 			}
 			conversation.UnreadCount = unreadCount
-			conversation.HasReadSeq = v.HasReadSeq
+			conversation.HasReadSeq = hasReadSeq
+			conversation.MaxSeq = maxSeq
 		}
 		err = c.db.BatchInsertConversationList(ctx, conversationsOnServer)
 		if err != nil {
@@ -139,9 +151,9 @@ func (c *Conversation) SyncAllConversationHashReadSeqs(ctx context.Context) erro
 
 	}
 
-	log.ZDebug(ctx, "update conversations", "conversations", conversationChangedIDs)
-	if len(conversationChangedIDs) > 0 {
-		common.TriggerCmdUpdateConversation(ctx, common.UpdateConNode{Action: constant.ConChange, Args: conversationChangedIDs}, c.GetCh())
+	log.ZDebug(ctx, "update conversations", "conversations", changedIDs)
+	if len(changedIDs) > 0 {
+		common.TriggerCmdUpdateConversation(ctx, common.UpdateConNode{Action: constant.ConChange, Args: changedIDs}, c.GetCh())
 		common.TriggerCmdUpdateConversation(ctx, common.UpdateConNode{Action: constant.TotalUnreadMessageChanged}, c.GetCh())
 	}
 	return nil

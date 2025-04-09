@@ -19,6 +19,7 @@ package indexdb
 
 import (
 	"context"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/db_param"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/wasm/exec"
@@ -118,6 +119,12 @@ func (i *LocalConversations) UpdateColumnsConversation(ctx context.Context, conv
 	_, err := exec.Exec(conversationID, utils.StructToJsonString(args))
 	return err
 }
+
+func (i *LocalConversations) UpdateColumnsMultipleConversations(ctx context.Context, conversations []*db_param.ColumnsMultipleConversationsModel) error {
+	_, err := exec.Exec(utils.StructToJsonString(conversations))
+	return err
+}
+
 func (i *LocalConversations) GetConversationByUserID(ctx context.Context, userID string) (*model_struct.LocalConversation, error) {
 	c, err := exec.Exec(userID)
 	if err != nil {

@@ -68,7 +68,7 @@ type Conversation struct {
 	messageController    *MessageController
 	cache                *cache.Cache[string, *model_struct.LocalConversation]
 	full                 *full.Full
-	maxSeqRecorder       MaxSeqRecorder
+	//maxSeqRecorder       MaxSeqRecorder
 	IsExternalExtensions bool
 
 	startTime time.Time
@@ -106,7 +106,7 @@ func NewConversation(ctx context.Context, longConnMgr *interaction.LongConnMgr, 
 		file:                 file,
 		messageController:    NewMessageController(db, ch),
 		IsExternalExtensions: info.IsExternalExtensions(),
-		maxSeqRecorder:       NewMaxSeqRecorder(),
+		//maxSeqRecorder:       NewMaxSeqRecorder(),
 	}
 	n.typing = newTyping(n)
 	n.initSyncer()
@@ -123,14 +123,23 @@ func (c *Conversation) initSyncer() {
 			return c.db.DeleteConversation(ctx, value.ConversationID)
 		},
 		func(ctx context.Context, serverConversation, localConversation *model_struct.LocalConversation) error {
-			return c.db.UpdateColumnsConversation(ctx, serverConversation.ConversationID,
-				map[string]interface{}{"recv_msg_opt": serverConversation.RecvMsgOpt,
-					"is_pinned": serverConversation.IsPinned, "is_private_chat": serverConversation.IsPrivateChat, "burn_duration": serverConversation.BurnDuration,
-					"is_not_in_group": serverConversation.IsNotInGroup, "group_at_type": serverConversation.GroupAtType,
-					"update_unread_count_time": serverConversation.UpdateUnreadCountTime,
-					"attached_info":            serverConversation.AttachedInfo, "ex": serverConversation.Ex, "msg_destruct_time": serverConversation.MsgDestructTime,
-					"is_msg_destruct": serverConversation.IsMsgDestruct,
-					"max_seq":         serverConversation.MaxSeq, "min_seq": serverConversation.MinSeq, "has_read_seq": serverConversation.HasReadSeq})
+			item := map[string]interface{}{"recv_msg_opt": serverConversation.RecvMsgOpt,
+				"is_pinned": serverConversation.IsPinned, "is_private_chat": serverConversation.IsPrivateChat, "burn_duration": serverConversation.BurnDuration,
+				"is_not_in_group": serverConversation.IsNotInGroup, "group_at_type": serverConversation.GroupAtType,
+				"update_unread_count_time": serverConversation.UpdateUnreadCountTime,
+				"attached_info":            serverConversation.AttachedInfo, "ex": serverConversation.Ex, "msg_destruct_time": serverConversation.MsgDestructTime,
+				"is_msg_destruct": serverConversation.IsMsgDestruct}
+			if serverConversation.MaxSeq != 0 {
+				item["max_seq"] = serverConversation.MaxSeq
+			}
+			if serverConversation.MinSeq != 0 {
+				item["min_seq"] = serverConversation.MinSeq
+			}
+			if serverConversation.HasReadSeq != 0 {
+				item["has_read_seq"] = serverConversation.HasReadSeq
+			}
+
+			return c.db.UpdateColumnsConversation(ctx, serverConversation.ConversationID, item)
 		},
 		func(value *model_struct.LocalConversation) string {
 			return value.ConversationID
@@ -187,12 +196,21 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 	b := time.Now()
 	onlineMap := make(map[onlineMsgKey]struct{})
 	var converationIDs []string
+	for conversationID, _ := range allMsg {
+		converationIDs = append(converationIDs, conversationID)
+	}
+	list, err := c.db.GetMultipleConversationDB(ctx, converationIDs)
+	if err != nil {
+		log.ZError(ctx, "GetMultipleConversationDB", err)
+	}
+	m := make(map[string]*model_struct.LocalConversation)
+	listToMap(list, m)
 	for conversationID, msgs := range allMsg {
 		log.ZDebug(ctx, "parse message in one conversation", "conversationID",
 			conversationID, "message length", len(msgs.Msgs))
 		var insertMessage, selfInsertMessage, othersInsertMessage []*model_struct.LocalChatLog
 		var updateMessage []*model_struct.LocalChatLog
-		converationIDs = append(converationIDs, conversationID)
+		conversation, conversationExitInLocal := m[conversationID]
 		for _, v := range msgs.Msgs {
 			log.ZDebug(ctx, "parse message ", "conversationID", conversationID, "msg", v)
 			isHistory = utils.GetSwitchFromOptions(v.Options, constant.IsHistory)
@@ -273,6 +291,11 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 						}
 						newMessages = append(newMessages, msg)
 					}
+					if cl, ok := conversationSet[conversationID]; ok {
+						if cl.MaxSeq < msg.Seq {
+							cl.MaxSeq = msg.Seq
+						}
+					}
 					if isHistory {
 						selfInsertMessage = append(selfInsertMessage, c.msgStructToLocalChatLog(msg))
 					}
@@ -297,15 +320,20 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 					}
 					if isUnreadCount {
 						//cacheConversation := c.cache.GetConversation(lc.ConversationID)
-						if c.maxSeqRecorder.IsNewMsg(conversationID, msg.Seq) {
+
+						if !conversationExitInLocal || conversation.MaxSeq < msg.Seq {
 							isTriggerUnReadCount = true
 							lc.UnreadCount = 1
-							c.maxSeqRecorder.Incr(conversationID, 1)
 						}
 					}
 					if isConversationUpdate {
 						c.updateConversation(&lc, conversationSet)
 						newMessages = append(newMessages, msg)
+					}
+					if cl, ok := conversationSet[conversationID]; ok {
+						if cl.MaxSeq < msg.Seq {
+							cl.MaxSeq = msg.Seq
+						}
 					}
 					if isHistory {
 						othersInsertMessage = append(othersInsertMessage, c.msgStructToLocalChatLog(msg))
@@ -324,12 +352,7 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 		updateMsg[conversationID] = updateMessage
 	}
 	//list, err := c.db.GetAllConversationListDB(ctx)
-	list, err := c.db.GetMultipleConversationDB(ctx, converationIDs)
-	if err != nil {
-		log.ZError(ctx, "GetMultipleConversationDB", err)
-	}
-	m := make(map[string]*model_struct.LocalConversation)
-	listToMap(list, m)
+
 	log.ZDebug(ctx, "listToMap: ", "local conversation", list, "generated c map", conversationSet)
 	c.diff(ctx, m, conversationSet, conversationChangedSet, newConversationSet)
 	log.ZInfo(ctx, "trigger map is :", "newConversations", newConversationSet, "changedConversations", conversationChangedSet)
@@ -423,6 +446,9 @@ func (c *Conversation) diff(ctx context.Context, localInDB, generated, conversat
 	for _, v := range generated {
 		if localC, ok := localInDB[v.ConversationID]; ok {
 
+			if localC.MaxSeq < v.MaxSeq {
+				localC.MaxSeq = v.MaxSeq
+			}
 			if v.LatestMsgSendTime > localC.LatestMsgSendTime {
 				localC.UnreadCount = localC.UnreadCount + v.UnreadCount
 				localC.LatestMsg = v.LatestMsg
@@ -994,7 +1020,7 @@ func (c *Conversation) batchGetUserNameAndFaceURL(ctx context.Context, userIDs .
 
 	friendList, err := c.friend.Db().GetFriendInfoList(ctx, userIDs)
 	if err != nil {
-		log.ZWarn(ctx, "BatchGetUserNameAndFaceURL", err, "userIDs", userIDs)
+		//log.ZWarn(ctx, "BatchGetUserNameAndFaceURL", err, "userIDs", userIDs)
 		notInFriend = userIDs
 	} else {
 		notInFriend = utils2.SliceSub(userIDs, utils2.Slice(friendList, func(e *model_struct.LocalFriend) string {
@@ -1022,6 +1048,7 @@ func (c *Conversation) batchGetUserNameAndFaceURL(ctx context.Context, userIDs .
 	if len(notCachedUserIDs) > 0 {
 		users, err := c.user.GetServerUserInfo(ctx, notCachedUserIDs)
 		if err != nil {
+			//log.ZWarn(ctx, "BatchGetUserNameAndFaceURL", err, "userIDs", userIDs)
 			return nil, err
 		}
 		for _, u := range users {

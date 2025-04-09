@@ -17,6 +17,7 @@ package db
 import (
 	"context"
 	"errors"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/wasm/exec"
 	"github.com/openimsdk/openim-sdk-core/v3/wasm/indexdb"
 )
@@ -43,6 +44,27 @@ type IndexDB struct {
 	*indexdb.LocalStrangers
 	*indexdb.LocalSendingMessages
 	loginUserID string
+}
+
+func (i IndexDB) ChangeConversationTaskStatus(ctx context.Context, conversationID string, taskStatus int32) error {
+	////TODO implement me
+	//panic("implement me")
+	// wasm 用不同的方案实现
+	return nil
+}
+
+func (i IndexDB) UpdateOrCreateGroupRelation(ctx context.Context, groupRelationes []*model_struct.LocalGroupRelation) error {
+	////TODO implement me
+	//panic("implement me")
+	// wasm 用不同的方案实现
+	return nil
+}
+
+func (i IndexDB) GetGroupRelationByGroupID(ctx context.Context, groupIDs []string) ([]*model_struct.LocalGroupRelation, error) {
+	////TODO implement me
+	//panic("implement me")
+	// wasm 用不同的方案实现
+	return nil, nil
 }
 
 func (i IndexDB) Close(ctx context.Context) error {

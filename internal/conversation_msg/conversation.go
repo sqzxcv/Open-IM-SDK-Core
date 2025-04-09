@@ -21,6 +21,7 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/internal/util"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/common"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/db_param"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	sdk "github.com/openimsdk/openim-sdk-core/v3/pkg/sdk_params_callback"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/sdkerrs"
@@ -75,16 +76,84 @@ func (c *Conversation) getServerConversationsByIDs(ctx context.Context, conversa
 	return util.Batch(ServerConversationToLocal, resp.Conversations), nil
 }
 
-func (c *Conversation) getServerHasReadAndMaxSeqs(ctx context.Context, conversationIDs ...string) (map[string]*msg.Seqs, error) {
+func (c *Conversation) getServerHasReadAndMaxSeqs(ctx context.Context, conversationIDs ...string) (*msg.GetConversationsHasReadAndMaxSeqResp, []string, error) {
+	hasReadLastUpdateAt, err := c.db.GetCustomParams(ctx, "all_conversation_hasread_seq_lastUpdateAt")
+	if err != nil {
+		log.ZError(ctx, "get all_conversation_hasread_seq_lastUpdateAt err", err)
+		return nil, nil, err
+	}
+	maxSeqLastUpdateAt, err := c.db.GetCustomParams(ctx, "all_conversation_max_seq_lastUpdateAt")
+	if err != nil {
+		log.ZError(ctx, "get all_conversation_max_seq_lastUpdateAt err", err)
+		return nil, nil, err
+	}
 	resp := &msg.GetConversationsHasReadAndMaxSeqResp{}
-	req := msg.GetConversationsHasReadAndMaxSeqReq{UserID: c.loginUserID}
+	req := msg.GetConversationsHasReadAndMaxSeqReq{
+		UserID:                  c.loginUserID,
+		HasReadSeqsLastUpdateAt: hasReadLastUpdateAt,
+		MaxSeqsLastUpdateAt:     maxSeqLastUpdateAt,
+		Increment:               true,
+	}
 	req.ConversationIDs = conversationIDs
-	err := util.ApiPost(ctx, constant.GetConversationsHasReadAndMaxSeqRouter, &req, resp)
+	err = util.ApiPost(ctx, constant.GetConversationsHasReadAndMaxSeqRouter, &req, resp)
 	if err != nil {
 		log.ZError(ctx, "getServerHasReadAndMaxSeqs err", err)
-		return nil, err
+		return nil, nil, err
 	}
-	return resp.Seqs, nil
+
+	var params []*db_param.ColumnsMultipleConversationsModel
+	changedConversationIDMap := make(map[string]bool)
+	var changedConversationIDs []string
+	log.ZWarn(ctx, "getServerHasReadAndMaxSeqs", nil, "hasReadLastUpdateAt", hasReadLastUpdateAt, "maxSeqLastUpdateAt", maxSeqLastUpdateAt, "resp", resp)
+	newHasReadSeqsUpdateAt := hasReadLastUpdateAt
+	newMaxSeqsUpdateAt := maxSeqLastUpdateAt
+	for conversationID, seq := range resp.HasReadSeqs {
+		if newHasReadSeqsUpdateAt < seq.UpdateAt {
+			newHasReadSeqsUpdateAt = seq.UpdateAt
+		}
+		if seq.Seq == 0 {
+			continue
+		}
+		changedConversationIDMap[conversationID] = true
+		params = append(params, &db_param.ColumnsMultipleConversationsModel{
+			ConversationID: conversationID,
+			Conversation: map[string]interface{}{
+				"has_read_seq": seq.Seq,
+			},
+		})
+	}
+	for conversationID, seq := range resp.MaxSeqs {
+		if newMaxSeqsUpdateAt < seq.UpdateAt {
+			newMaxSeqsUpdateAt = seq.UpdateAt
+		}
+		if seq.Seq == 0 {
+			continue
+		}
+		changedConversationIDMap[conversationID] = true
+		params = append(params, &db_param.ColumnsMultipleConversationsModel{
+			ConversationID: conversationID,
+			Conversation: map[string]interface{}{
+				"max_seq": seq.Seq,
+			},
+		})
+	}
+	//log.ZWarn(ctx, "UpdateColumnsMultipleConversations getServerHasReadAndMaxSeqs", nil, hasReadLastUpdateAt, "maxSeqLastUpdateAt", maxSeqLastUpdateAt, "params", params, "resp", resp, "hasReadLastUpdateAt")
+	if err := c.db.UpdateColumnsMultipleConversations(ctx, params); err != nil {
+		log.ZWarn(ctx, "UpdateColumnsMultipleConversations err", err, "params", params)
+		return nil, nil, err
+	}
+	for conversationID := range changedConversationIDMap {
+		changedConversationIDs = append(changedConversationIDs, conversationID)
+	}
+
+	if newHasReadSeqsUpdateAt > hasReadLastUpdateAt {
+		_ = c.db.SetCustomParams(ctx, "all_conversation_hasread_seq_lastUpdateAt", newHasReadSeqsUpdateAt)
+	}
+	if newMaxSeqsUpdateAt > maxSeqLastUpdateAt {
+		_ = c.db.SetCustomParams(ctx, "all_conversation_max_seq_lastUpdateAt", newMaxSeqsUpdateAt)
+	}
+
+	return resp, changedConversationIDs, nil
 }
 
 func (c *Conversation) getAdvancedHistoryMessageList(ctx context.Context, req sdk.GetAdvancedHistoryMessageListParams, isReverse bool) (*sdk.GetAdvancedHistoryMessageListCallback, error) {

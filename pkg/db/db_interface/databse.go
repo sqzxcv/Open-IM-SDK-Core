@@ -16,6 +16,7 @@ package db_interface
 
 import (
 	"context"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/db_param"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/sdk_struct"
 )
@@ -206,6 +207,7 @@ type ConversationModel interface {
 	RemoveConversationDraft(ctx context.Context, conversationID, draftText string) error
 	UnPinConversation(ctx context.Context, conversationID string, isPinned int) error
 	UpdateColumnsConversation(ctx context.Context, conversationID string, args map[string]interface{}) error
+	UpdateColumnsMultipleConversations(ctx context.Context, conversations []*db_param.ColumnsMultipleConversationsModel) error
 	UpdateAllConversation(ctx context.Context, conversation *model_struct.LocalConversation) error
 	IncrConversationUnreadCount(ctx context.Context, conversationID string) error
 	DecrConversationUnreadCount(ctx context.Context, conversationID string, count int64) (err error)
