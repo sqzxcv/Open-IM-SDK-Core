@@ -154,11 +154,12 @@ func (c *Conversation) initSyncer() {
 				server.UpdateUnreadCountTime != local.UpdateUnreadCountTime ||
 				server.AttachedInfo != local.AttachedInfo ||
 				server.Ex != local.Ex ||
-				server.MaxSeq != local.MaxSeq ||
+				// fix at 2025-04-16: server返回的MaxSeq永远是0, 而本地的MaxSeq是最新的, 所以不能作为比较依据, 先注释掉
+				//server.MaxSeq != local.MaxSeq ||
 				server.MinSeq != local.MinSeq ||
 				server.MsgDestructTime != local.MsgDestructTime ||
 				server.IsMsgDestruct != local.IsMsgDestruct {
-				log.ZDebug(context.Background(), "not same", "conversationID", server.ConversationID, "server", server.RecvMsgOpt, "local", local.RecvMsgOpt)
+				//log.ZWarn(context.Background(), "------not same", nil, "conversationID", server.ConversationID, "server", server, "local", local)
 				return false
 			}
 			return true
@@ -178,6 +179,10 @@ type onlineMsgKey struct {
 
 func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 	allMsg := c2v.Value.(sdk_struct.CmdNewMsgComeToConversation).Msgs
+	if len(allMsg) == 0 {
+		log.ZDebug(c2v.Ctx, "doMsgNew", "allMsg length", len(allMsg))
+		return
+	}
 	ctx := c2v.Ctx
 	var isTriggerUnReadCount bool
 	insertMsg := make(map[string][]*model_struct.LocalChatLog, 10)
@@ -201,7 +206,7 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 	}
 	list, err := c.db.GetMultipleConversationDB(ctx, converationIDs)
 	if err != nil {
-		log.ZError(ctx, "GetMultipleConversationDB", err)
+		log.ZError(ctx, "GetMultipleConversationDB", err, "list", list, "conversationIDs", converationIDs, "allMsg", allMsg)
 	}
 	m := make(map[string]*model_struct.LocalConversation)
 	listToMap(list, m)
@@ -854,7 +859,10 @@ func (c *Conversation) msgHandleByContentType(msg *sdk_struct.MsgStruct) (err er
 		fallthrough
 	case constant.CustomMsgOnlineOnly:
 		t := sdk_struct.CustomElem{}
-		err = utils.JsonStringToStruct(msg.Content, &t)
+		if msg.Content == "" {
+			err = utils.JsonStringToStruct(msg.Content, &t)
+		}
+
 		msg.CustomElem = &t
 	case constant.Typing:
 		t := sdk_struct.TypingElem{}

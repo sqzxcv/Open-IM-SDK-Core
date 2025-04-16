@@ -16,11 +16,10 @@ package user
 
 import (
 	"context"
-	"errors"
-	userPb "github.com/openimsdk/protocol/user"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
+	userPb "github.com/openimsdk/protocol/user"
 
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
@@ -68,8 +67,8 @@ func (u *User) SyncUserStatus(ctx context.Context, fromUserID string, status int
 			u.OnlineStatusCache.Store(fromUserID, &userOnlineStatus)
 			u.listener().OnUserStatusChanged(utils.StructToJsonString(userOnlineStatus))
 		} else {
-			log.ZWarn(ctx, "exception", errors.New("user not exist"), "fromUserID", fromUserID,
-				"status", status, "platformID", platformID)
+			//log.ZWarn(ctx, "exception", errors.New("user not exist"), "fromUserID", fromUserID,
+			//	"status", status, "platformID", platformID)
 		}
 	}
 }

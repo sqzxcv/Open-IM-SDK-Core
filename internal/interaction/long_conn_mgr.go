@@ -339,7 +339,7 @@ func (c *LongConnMgr) StartHeartbeat(ctx context.Context) {
 				return // 当心跳上下文被取消时，停止心跳
 			case <-time.After(t):
 
-				if err := c.sendHeartbeatMessage(ctx); err == nil {
+				if err := c.sendHeartbeatMessage(heartbeatCtx); err == nil {
 					c.heartBeatFailures = 0
 					t = 10 * time.Second
 				} else {

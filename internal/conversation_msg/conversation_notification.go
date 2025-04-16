@@ -30,23 +30,40 @@ import (
 )
 
 func (c *Conversation) Work(c2v common.Cmd2Value) {
-	log.ZDebug(c2v.Ctx, "NotificationCmd start", "cmd", c2v.Cmd, "value", c2v.Value)
-	defer log.ZDebug(c2v.Ctx, "NotificationCmd end", "cmd", c2v.Cmd, "value", c2v.Value)
+	log.ZWarn(c2v.Ctx, "==========NotificationCmd start", nil, "cmd", c2v.Cmd, "value", c2v.Value)
+	defer log.ZWarn(c2v.Ctx, "==========NotificationCmd end", nil, "cmd", c2v.Cmd)
+	//defer log.ZWarn(c2v.Ctx, "==========NotificationCmd end", nil, "cmd", c2v.Cmd, "value", c2v.Value)
+	procsseTime := time.Now().Unix()
 	switch c2v.Cmd {
 	case constant.CmdDeleteConversation:
 		c.doDeleteConversation(c2v)
+		printLog(c2v.Ctx, "CmdDeleteConversation", time.Now().Unix()-procsseTime, c2v)
+
 	case constant.CmdNewMsgCome:
 		c.doMsgNew(c2v)
+		printLog(c2v.Ctx, "CmdNewMsgCome", time.Now().Unix()-procsseTime, c2v)
 	case constant.CmdSuperGroupMsgCome:
 		// c.doSuperGroupMsgNew(c2v)
 	case constant.CmdUpdateConversation:
 		c.doUpdateConversation(c2v)
+		printLog(c2v.Ctx, "CmdUpdateConversation", time.Now().Unix()-procsseTime, c2v)
 	case constant.CmdUpdateMessage:
 		c.doUpdateMessage(c2v)
+		printLog(c2v.Ctx, "CmdUpdateMessage", time.Now().Unix()-procsseTime, c2v)
 	case constant.CmSyncReactionExtensions:
 		// c.doSyncReactionExtensions(c2v)
 	case constant.CmdNotification:
 		c.doNotificationNew(c2v)
+		//log.ZWarn(c2v.Ctx, "==========CmdNotification", nil, "cmd", constant.CmdNotification)
+		printLog(c2v.Ctx, "CmdNotification", time.Now().Unix()-procsseTime, c2v)
+	}
+}
+
+func printLog(ctx context.Context, msg string, cost int64, c2v common.Cmd2Value) {
+	if cost > 10 {
+		log.ZError(ctx, "printLog--------"+msg, nil, "cost", cost)
+	} else if cost > 0 {
+		log.ZWarn(ctx, "printLog--------"+msg, nil, "cost", cost)
 	}
 }
 
@@ -608,6 +625,8 @@ func (c *Conversation) DoConversationIsPrivateChangedNotification(ctx context.Co
 }
 
 func (c *Conversation) doNotificationNew(c2v common.Cmd2Value) {
+	//log.ZWarn(c2v.Ctx, "============doNotificationNew", nil, "No.", 1)
+	//defer log.ZWarn(c2v.Ctx, "============doNotificationNew", nil, "No.", "end")
 	ctx := c2v.Ctx
 	allMsg := c2v.Value.(sdk_struct.CmdNewMsgComeToConversation).Msgs
 	syncFlag := c2v.Value.(sdk_struct.CmdNewMsgComeToConversation).SyncFlag
@@ -637,17 +656,21 @@ func (c *Conversation) doNotificationNew(c2v common.Cmd2Value) {
 		go c.SyncAllConversations(ctx)
 	}
 
+	//log.ZWarn(ctx, "============doNotificationNew", nil, "No.", 2)
 	for conversationID, msgs := range allMsg {
 		log.ZDebug(ctx, "notification handling", "conversationID", conversationID, "msgs", msgs)
 		if len(msgs.Msgs) != 0 {
 			lastMsg := msgs.Msgs[len(msgs.Msgs)-1]
 			log.ZDebug(ctx, "SetNotificationSeq", "conversationID", conversationID, "seq", lastMsg.Seq)
 			if lastMsg.Seq != 0 {
+				//log.ZWarn(ctx, "============SetNotificationSeq", nil, "No.", 2.1)
 				if err := c.db.SetNotificationSeq(ctx, conversationID, lastMsg.Seq); err != nil {
 					log.ZError(ctx, "SetNotificationSeq err", err, "conversationID", conversationID, "lastMsg", lastMsg)
 				}
+				//log.ZWarn(ctx, "============SetNotificationSeq", nil, "No.", 2.2)
 			}
 		}
+		//log.ZWarn(ctx, "============doNotificationNew", nil, "No.", 3)
 		for _, v := range msgs.Msgs {
 			switch {
 			case v.ContentType == constant.ConversationChangeNotification:
@@ -673,6 +696,7 @@ func (c *Conversation) doNotificationNew(c2v common.Cmd2Value) {
 			case v.ContentType == constant.HasReadReceipt:
 				c.doReadDrawing(ctx, v)
 			}
+			//log.ZWarn(ctx, "============doNotificationNew", nil, "No.", 3.1)
 
 			switch v.SessionType {
 			case constant.SingleChatType:
@@ -693,6 +717,7 @@ func (c *Conversation) doNotificationNew(c2v common.Cmd2Value) {
 					continue
 				}
 			}
+			//log.ZWarn(ctx, "============doNotificationNew", nil, "No.", 3.2)
 		}
 	}
 

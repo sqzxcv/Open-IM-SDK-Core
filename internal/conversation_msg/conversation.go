@@ -104,7 +104,7 @@ func (c *Conversation) getServerHasReadAndMaxSeqs(ctx context.Context, conversat
 	var params []*db_param.ColumnsMultipleConversationsModel
 	changedConversationIDMap := make(map[string]bool)
 	var changedConversationIDs []string
-	log.ZWarn(ctx, "getServerHasReadAndMaxSeqs", nil, "hasReadLastUpdateAt", hasReadLastUpdateAt, "maxSeqLastUpdateAt", maxSeqLastUpdateAt, "resp", resp)
+	//log.ZWarn(ctx, "getServerHasReadAndMaxSeqs", nil, "hasReadLastUpdateAt", hasReadLastUpdateAt, "maxSeqLastUpdateAt", maxSeqLastUpdateAt, "resp", resp)
 	newHasReadSeqsUpdateAt := hasReadLastUpdateAt
 	newMaxSeqsUpdateAt := maxSeqLastUpdateAt
 	for conversationID, seq := range resp.HasReadSeqs {

@@ -20,6 +20,7 @@ import (
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 	"github.com/openimsdk/openim-sdk-core/v3/sdk_struct"
+	"runtime/debug"
 	"time"
 
 	"github.com/openimsdk/tools/log"
@@ -41,6 +42,7 @@ func TriggerCmdNewMsgCome(ctx context.Context, msg sdk_struct.CmdNewMsgComeToCon
 	}
 
 	c2v := Cmd2Value{Cmd: constant.CmdNewMsgCome, Value: msg, Ctx: ctx}
+	//log.ZWarn(ctx, "+++++++++++++TriggerCmdNewMsgCome ", nil, "cmd", constant.CmdNewMsgCome, "capacity", cap(conversationCh), "len", len(conversationCh), "msg", msg)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -50,6 +52,7 @@ func TriggerCmdSuperGroupMsgCome(msg sdk_struct.CmdNewMsgComeToConversation, con
 	}
 
 	c2v := Cmd2Value{Cmd: constant.CmdSuperGroupMsgCome, Value: msg}
+	//log.ZWarn(context.Background(), "+++++++++++++TriggerCmdSuperGroupMsgCome ", nil, "cmd", constant.CmdSuperGroupMsgCome, "capacity", cap(conversationCh), "len", len(conversationCh), "msg", msg)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -59,6 +62,7 @@ func TriggerCmdNotification(ctx context.Context, msg sdk_struct.CmdNewMsgComeToC
 	}
 
 	c2v := Cmd2Value{Cmd: constant.CmdNotification, Value: msg, Ctx: ctx}
+	//log.ZWarn(ctx, "+++++++++++++TriggerCmdNotification ", nil, "cmd", constant.CmdNotification, "capacity", cap(conversationCh), "len", len(conversationCh), "msg", msg)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -79,6 +83,7 @@ func TriggerCmdDeleteConversationAndMessage(sourceID, conversationID string, ses
 		Value: DeleteConNode{SourceID: sourceID, ConversationID: conversationID, SessionType: sessionType},
 	}
 
+	//log.ZWarn(context.Background(), "+++++++++++++TriggerCmdDeleteConversationAndMessage ", nil, "cmd", constant.CmdDeleteConversation, "capacity", cap(conversationCh), "len", len(conversationCh), "sourceID", sourceID, "conversationID", conversationID, "sessionType", sessionType)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -91,6 +96,7 @@ func TriggerCmdSyncReactionExtensions(node SyncReactionExtensionsNode, conversat
 		Value: node,
 	}
 
+	//log.ZWarn(context.Background(), "+++++++++++++TriggerCmdSyncReactionExtensions ", nil, "cmd", constant.CmSyncReactionExtensions, "capacity", cap(conversationCh), "len", len(conversationCh), "node", node)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -101,6 +107,7 @@ func TriggerCmdUpdateConversation(ctx context.Context, node UpdateConNode, conve
 		Ctx:   ctx,
 	}
 
+	//log.ZWarn(ctx, "+++++++++++++TriggerCmdUpdateConversation ", nil, "cmd", constant.CmdUpdateConversation, "capacity", cap(conversationCh), "len", len(conversationCh), "node", node)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -111,6 +118,7 @@ func TriggerCmdUpdateMessage(ctx context.Context, node UpdateMessageNode, conver
 		Ctx:   ctx,
 	}
 
+	//log.ZWarn(ctx, "+++++++++++++TriggerCmdUpdateMessage ", nil, "cmd", constant.CmdUpdateMessage, "capacity", cap(conversationCh), "len", len(conversationCh), "node", node)
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -197,6 +205,7 @@ type SourceIDAndSessionType struct {
 
 func UnInitAll(conversationCh chan Cmd2Value) error {
 	c2v := Cmd2Value{Cmd: constant.CmdUnInit}
+	//log.ZWarn(context.Background(), "++++++++++++++++UnInitAll", nil, "capacity", cap(conversationCh), "len", len(conversationCh))
 	return sendCmd(conversationCh, c2v, 100)
 }
 
@@ -207,23 +216,42 @@ type goroutine interface {
 }
 
 func DoListener(Li goroutine, ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			// 捕获 panic，并打印日志
+			log.ZError(ctx, "----------------DoListener 崩溃", nil, "panic", r, "stack", string(debug.Stack()))
+		}
+		// 确保退出日志，无论 panic 与否
+		log.ZError(ctx, "----------------DoListener 退出了", nil)
+		utils.ReloadLib()
+	}()
+
+	//defer log.ZError(ctx, "DoListener 退出了", nil)
 	for {
 		select {
 		case cmd := <-Li.GetCh():
 			Li.Work(cmd)
 		case <-ctx.Done():
-			log.ZInfo(ctx, "conversation done sdk logout.....")
+			log.ZError(ctx, "conversation done sdk logout.....", nil)
 			return
 		}
 	}
 
 }
 
+//var CmdMap = map[string]
+var didReloadLib = false
+
 func sendCmd(ch chan<- Cmd2Value, value Cmd2Value, timeout int64) error {
 	select {
 	case ch <- value:
 		return nil
 	case <-time.After(time.Millisecond * time.Duration(timeout)):
+		log.ZError(value.Ctx, "send cmd timeout", errors.New("send cmd timeout"), "cmd", value.Cmd, "capacity", cap(ch), "len", len(ch))
+		if cap(ch) != 0 && len(ch) == cap(ch) && !didReloadLib {
+			utils.ReloadLib() //("网页数据加载错误, 需要重新加载吗？")
+			didReloadLib = true
+		}
 		return errors.New("send cmd timeout")
 	}
 }
