@@ -29,6 +29,7 @@ import (
 	"github.com/openimsdk/protocol/third"
 	"io"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -323,25 +324,33 @@ func (c *LongConnMgr) StartHeartbeat(ctx context.Context) {
 		c.cancelHeartbeat() // 取消之前的心跳
 	}
 
-	// 创建新的可取消的心跳上下文
-	var heartbeatCtx context.Context
-	heartbeatCtx, c.cancelHeartbeat = context.WithCancel(ctx)
+	heartbeatCtx, cancel := context.WithCancel(ctx)
+	c.cancelHeartbeat = cancel
 
-	// 启动一个新的协程来执行心跳任务
-	go func() {
-		defer c.cancelHeartbeat() // 确保心跳结束时调用 cancel
+	go func(cancel context.CancelFunc) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.ZError(ctx, "Heartbeat panic recovered", fmt.Errorf("%v", r), "stack", string(debug.Stack()))
+			}
+			cancel() // 确保退出时 cancel 一次
+		}()
 
-		t := 1 * time.Second // 初始心跳间隔为1秒,立刻发送第一个心跳
+		timer := time.NewTimer(1 * time.Second)
+		defer timer.Stop()
+
+		t := 1 * time.Second
+
 		for {
 			select {
 			case <-heartbeatCtx.Done():
 				log.ZInfo(ctx, "Heartbeat stopped.")
-				return // 当心跳上下文被取消时，停止心跳
-			case <-time.After(t):
-
-				if err := c.sendHeartbeatMessage(heartbeatCtx); err == nil {
+				return
+			case <-timer.C:
+				newT := t
+				err := c.sendHeartbeatMessage(heartbeatCtx)
+				if err == nil {
 					c.heartBeatFailures = 0
-					t = 10 * time.Second
+					newT = 10 * time.Second
 				} else {
 					c.heartBeatFailures++
 					if c.heartBeatFailures >= 5 {
@@ -349,11 +358,23 @@ func (c *LongConnMgr) StartHeartbeat(ctx context.Context) {
 						c.listener.OnConnectFailed(sdkerrs.NetworkError, err.Error())
 						return // 如果连接已关闭，无需继续心跳
 					}
-					t = 100 * time.Millisecond
+					newT = 100 * time.Millisecond
 				}
+
+				// reset timer safely
+				if newT != t {
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
+					}
+					t = newT
+				}
+				timer.Reset(t)
 			}
 		}
-	}()
+	}(cancel)
 }
 
 func (c *LongConnMgr) sendHeartbeatMessage(ctx context.Context) error {

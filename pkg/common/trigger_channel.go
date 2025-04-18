@@ -215,28 +215,67 @@ type goroutine interface {
 	//GetContext() context.Context
 }
 
+type worker struct {
+	taskCh chan Cmd2Value
+	stopCh chan struct{}
+}
+
+func newWorker(Li goroutine) *worker {
+	w := &worker{
+		taskCh: make(chan Cmd2Value),
+		stopCh: make(chan struct{}),
+	}
+	go func() {
+		for {
+			select {
+			case cmd := <-w.taskCh:
+				Li.Work(cmd)
+			case <-w.stopCh:
+				return
+			}
+		}
+	}()
+	return w
+}
+
 func DoListener(Li goroutine, ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			// 捕获 panic，并打印日志
 			log.ZError(ctx, "----------------DoListener 崩溃", nil, "panic", r, "stack", string(debug.Stack()))
 		}
-		// 确保退出日志，无论 panic 与否
 		log.ZError(ctx, "----------------DoListener 退出了", nil)
 		utils.ReloadLib()
 	}()
 
-	//defer log.ZError(ctx, "DoListener 退出了", nil)
+	w := newWorker(Li)
+
 	for {
 		select {
 		case cmd := <-Li.GetCh():
-			Li.Work(cmd)
+			// 1分钟超时控制
+			syncFlag := cmd.Value.(sdk_struct.CmdNewMsgComeToConversation).SyncFlag
+			t := 2 * time.Minute
+			if syncFlag >= constant.MsgSyncBegin && syncFlag <= constant.MsgSyncEnd {
+				t = 10 * time.Second
+			}
+			timeoutCtx, cancel := context.WithTimeout(ctx, t)
+			defer cancel()
+			select {
+			case w.taskCh <- cmd:
+				// 成功投递给worker处理
+			case <-timeoutCtx.Done():
+				// 超时：关闭旧 worker，重建新 worker
+				log.ZError(ctx, "worker timeout, restarting...", nil, "cmd", cmd.Cmd)
+				close(w.stopCh)
+				w = newWorker(Li)
+			}
+
 		case <-ctx.Done():
 			log.ZError(ctx, "conversation done sdk logout.....", nil)
+			close(w.stopCh)
 			return
 		}
 	}
-
 }
 
 //var CmdMap = map[string]
