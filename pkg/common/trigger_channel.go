@@ -253,10 +253,13 @@ func DoListener(Li goroutine, ctx context.Context) {
 		select {
 		case cmd := <-Li.GetCh():
 			// 1分钟超时控制
-			syncFlag := cmd.Value.(sdk_struct.CmdNewMsgComeToConversation).SyncFlag
 			t := 2 * time.Minute
-			if syncFlag >= constant.MsgSyncBegin && syncFlag <= constant.MsgSyncEnd {
-				t = 10 * time.Second
+			if cmd.Cmd == constant.CmdNotification {
+				syncFlag := cmd.Value.(sdk_struct.CmdNewMsgComeToConversation).SyncFlag
+				isSyncCmd := syncFlag >= constant.MsgSyncBegin && syncFlag <= constant.MsgSyncEnd
+				if isSyncCmd {
+					t = 10 * time.Second
+				}
 			}
 			timeoutCtx, cancel := context.WithTimeout(ctx, t)
 			defer cancel()
