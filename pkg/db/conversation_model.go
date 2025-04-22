@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/constant"
+	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/db_param"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/db/model_struct"
 	"github.com/openimsdk/openim-sdk-core/v3/pkg/utils"
 
@@ -286,6 +287,28 @@ func (d *DataBase) UpdateColumnsConversation(ctx context.Context, conversationID
 	}
 	return utils.Wrap(t.Error, "UpdateColumnsConversation failed")
 }
+
+func (d *DataBase) UpdateColumnsMultipleConversations(ctx context.Context, conversations []*db_param.ColumnsMultipleConversationsModel) error {
+	d.mRWMutex.Lock()
+	defer d.mRWMutex.Unlock()
+
+	return d.conn.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, conv := range conversations {
+			if conv.ConversationID == "" || len(conv.Conversation) == 0 {
+				continue // 忽略空ID或空字段的项
+			}
+
+			// 执行更新
+			if err := tx.Model(&model_struct.LocalConversation{}).
+				Where("conversation_id = ?", conv.ConversationID).
+				Updates(conv.Conversation).Error; err != nil {
+				return err // 出错则回滚事务
+			}
+		}
+		return nil
+	})
+}
+
 func (d *DataBase) UpdateAllConversation(ctx context.Context, conversation *model_struct.LocalConversation) error {
 	d.mRWMutex.Lock()
 	defer d.mRWMutex.Unlock()

@@ -34,6 +34,24 @@ func (d *DataBase) GetGroupMemberInfoByGroupIDUserID(ctx context.Context, groupI
 		groupID, userID).Take(&groupMember).Error, "GetGroupMemberInfoByGroupIDUserID failed")
 }
 
+func (d *DataBase) GetGroupMemberAllGroupIDsWithoutKefuGroup(ctx context.Context) ([]string, error) {
+	d.groupMtx.Lock()
+	defer d.groupMtx.Unlock()
+	var groupMemberList []model_struct.LocalGroupMember
+	//return groupMemberList, utils.Wrap(d.conn.WithContext(ctx).Find(&groupMemberList).Error, "GetAllGroupMemberList failed")
+
+	err := d.conn.WithContext(ctx).Table("local_group_member").
+		Joins("JOIN local_conversation ON local_group_member.group_id = local_conversation.group_id").
+		Where("local_conversation.task_status = ?", -1).
+		Find(&groupMemberList).Error
+
+	var allIds []string
+	for _, v := range groupMemberList {
+		allIds = append(allIds, v.GroupID)
+	}
+	return allIds, utils.Wrap(err, "GetJoinedGroupList failed ")
+}
+
 func (d *DataBase) GetAllGroupMemberList(ctx context.Context) ([]model_struct.LocalGroupMember, error) {
 	d.groupMtx.Lock()
 	defer d.groupMtx.Unlock()

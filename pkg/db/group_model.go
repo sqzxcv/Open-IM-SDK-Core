@@ -62,6 +62,23 @@ func (d *DataBase) GetJoinedGroupListDB(ctx context.Context) ([]*model_struct.Lo
 	return transfer, utils.Wrap(err, "GetJoinedGroupList failed ")
 }
 
+func (d *DataBase) GetJoinGroupListWithoutKefuGroup(ctx context.Context) ([]*model_struct.LocalGroup, error) {
+	d.groupMtx.Lock()
+	defer d.groupMtx.Unlock()
+	var groupList []model_struct.LocalGroup
+	//err := d.conn.WithContext(ctx).Find(&groupList).Error
+	err := d.conn.WithContext(ctx).Table("local_group").
+		Joins("JOIN local_conversation ON local_group.group_id = local_conversation.group_id").
+		Where("local_conversation.task_status = ?", -1).
+		Find(&groupList).Error
+	var transfer []*model_struct.LocalGroup
+	for _, v := range groupList {
+		v1 := v
+		transfer = append(transfer, &v1)
+	}
+	return transfer, utils.Wrap(err, "GetJoinedGroupList failed ")
+}
+
 func (d *DataBase) GetGroups(ctx context.Context, groupIDs []string) ([]*model_struct.LocalGroup, error) {
 	d.groupMtx.Lock()
 	defer d.groupMtx.Unlock()

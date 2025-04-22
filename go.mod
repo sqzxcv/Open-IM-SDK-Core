@@ -24,7 +24,7 @@ require (
 	github.com/openimsdk/tools v0.0.24
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sqzxcv/glog v0.0.0-20240903100204-ee7f108f80dd
-	golang.org/x/image v0.25.0
+	golang.org/x/image v0.26.0
 	gorm.io/gorm v1.25.12
 )
 
@@ -38,8 +38,9 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/mobile v0.0.0-20250408133729-978277e7eaf7 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.62.1 // indirect
 )

@@ -9,3 +9,7 @@ func ReloadProgress() {
 func ConfirmWithTimeout(msg string) {
 
 }
+
+func ReloadLib() {
+
+}
