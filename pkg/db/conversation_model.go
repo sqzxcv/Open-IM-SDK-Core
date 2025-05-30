@@ -87,11 +87,18 @@ func (d *DataBase) GetAllSingleConversationIDList(ctx context.Context) (result [
 	return result, utils.Wrap(err, "GetAllConversationIDList failed ")
 }
 
-func (d *DataBase) GetConversationListSplitDB(ctx context.Context, offset, count int) ([]*model_struct.LocalConversation, error) {
+func (d *DataBase) GetConversationListSplitDB(ctx context.Context, offset, count int, isUnReadConversation bool) ([]*model_struct.LocalConversation, error) {
 	d.mRWMutex.Lock()
 	defer d.mRWMutex.Unlock()
 	var conversationList []model_struct.LocalConversation
-	err := utils.Wrap(d.conn.WithContext(ctx).Where("latest_msg_send_time > ?", 0).Order("case when is_pinned=1 then 0 else 1 end, task_status DESC,max(latest_msg_send_time,draft_text_time) DESC").Offset(offset).Limit(count).Find(&conversationList).Error,
+	query := d.conn.WithContext(ctx).Where("latest_msg_send_time > ?", 0)
+
+	// 根据 isUnReadConversation 参数添加未读筛选条件
+	if isUnReadConversation {
+		query = query.Where("unread_count > ?", 0)
+	}
+
+	err := utils.Wrap(query.Order("case when is_pinned=1 then 0 else 1 end, task_status DESC,max(latest_msg_send_time,draft_text_time) DESC").Offset(offset).Limit(count).Find(&conversationList).Error,
 		"GetFriendList failed")
 	var transfer []*model_struct.LocalConversation
 	for _, v := range conversationList {
@@ -334,14 +341,17 @@ func (d *DataBase) IncrConversationUnreadCount(ctx context.Context, conversation
 func (d *DataBase) GetTotalUnreadMsgCountDB(ctx context.Context) (totalUnreadCount int32, err error) {
 	d.mRWMutex.Lock()
 	defer d.mRWMutex.Unlock()
-	var result []int64
-	err = d.conn.WithContext(ctx).Model(&model_struct.LocalConversation{}).Where("recv_msg_opt < ? and latest_msg_send_time > ?", constant.ReceiveNotNotifyMessage, 0).Pluck("unread_count", &result).Error
+
+	err = d.conn.WithContext(ctx).
+		Model(&model_struct.LocalConversation{}).
+		Where("recv_msg_opt < ? AND latest_msg_send_time > ?", constant.ReceiveNotNotifyMessage, 0).
+		Select("SUM(unread_count) as total_unread_count").
+		Scan(&totalUnreadCount).Error
+
 	if err != nil {
-		return totalUnreadCount, utils.Wrap(errors.New("GetTotalUnreadMsgCount err"), "GetTotalUnreadMsgCount err")
+		return 0, utils.Wrap(errors.New("GetTotalUnreadMsgCount err"), "GetTotalUnreadMsgCount err")
 	}
-	for _, v := range result {
-		totalUnreadCount += int32(v)
-	}
+
 	return totalUnreadCount, nil
 }
 

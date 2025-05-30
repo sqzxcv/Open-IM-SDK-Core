@@ -22,8 +22,8 @@ func GetAllConversationList(callback open_im_sdk_callback.Base, operationID stri
 	call(callback, operationID, UserForSDK.Conversation().GetAllConversationList)
 }
 
-func GetConversationListSplit(callback open_im_sdk_callback.Base, operationID string, offset int, count int) {
-	call(callback, operationID, UserForSDK.Conversation().GetConversationListSplit, offset, count)
+func GetConversationListSplit(callback open_im_sdk_callback.Base, operationID string, offset int, count int, isUnReadConversation bool) {
+	call(callback, operationID, UserForSDK.Conversation().GetConversationListSplit, offset, count, isUnReadConversation)
 }
 
 func GetOneConversation(callback open_im_sdk_callback.Base, operationID string, sessionType int32, sourceID string) {

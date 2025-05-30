@@ -49,8 +49,8 @@ func (c *Conversation) GetAllConversationList(ctx context.Context) ([]*model_str
 	return c.db.GetAllConversationListDB(ctx)
 }
 
-func (c *Conversation) GetConversationListSplit(ctx context.Context, offset, count int) ([]*model_struct.LocalConversation, error) {
-	return c.db.GetConversationListSplitDB(ctx, offset, count)
+func (c *Conversation) GetConversationListSplit(ctx context.Context, offset, count int, isUnReadConversation bool) ([]*model_struct.LocalConversation, error) {
+	return c.db.GetConversationListSplitDB(ctx, offset, count, isUnReadConversation)
 }
 
 func (c *Conversation) HideConversation(ctx context.Context, conversationID string) error {
